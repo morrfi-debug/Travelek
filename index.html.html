@@ -1,0 +1,2519 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ТравелЕк</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+  :root {
+    --navy: #1C2541;
+    --paper: #F6F3EC;
+    --bg: #EFEDE4;
+    --line: #C9C4B4;
+    --line-soft: #E3DFD1;
+    --muted: #5B6579;
+    --muted2: #8B95A8;
+    --amber: #D9A62E;
+    --green: #3F7A5E;
+    --red: #B33A3A;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); font-family: 'IBM Plex Sans', sans-serif; color: var(--navy); }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  #map { position: fixed; inset: 0; z-index: 0; background: #E4E1D3; }
+  #map .leaflet-container { background: #E4E1D3; }
+  #map .leaflet-tile-pane { filter: grayscale(0.5) saturate(0.4) contrast(0.75) brightness(1.08); }
+  .maplibregl-map { background: #E4E1D3 !important; }
+  .leaflet-control-attribution { display: none !important; }
+  .maplibregl-ctrl-attrib { display: none !important; }
+  .leaflet-popup-content { font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; }
+  .map-legend { position: fixed; left: 16px; bottom: 14px; z-index: 15; background: rgba(246,243,236,0.92); border: 1px solid var(--line); padding: 6px 10px; font-size: 11px; color: var(--muted); max-width: 240px; }
+
+  .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 20; background: rgba(28,37,65,0.94); backdrop-filter: blur(6px); padding: 16px 20px 0; }
+  .header-inner { max-width: 980px; margin: 0 auto; }
+  .brand { display: flex; align-items: center; gap: 9px; }
+  .brand-text { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; color: var(--paper); letter-spacing: 0.02em; }
+  .header-sub { margin-top: 3px; color: #9AA3B8; font-size: 12px; padding-bottom: 12px; }
+
+  .tabs { display: flex; gap: 2px; max-width: 980px; margin: 0 auto; }
+  .tab { flex: 1; text-align: center; padding: 10px 8px; font-size: 13px; font-weight: 600; color: #9AA3B8; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit; }
+  .tab.active { color: var(--paper); border-bottom-color: var(--amber); }
+
+  .side-panel { position: fixed; top: 108px; right: 20px; bottom: 20px; width: 400px; max-width: calc(100vw - 40px); z-index: 15; overflow-y: auto; background: rgba(246,243,236,0.97); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(28,37,65,0.2); padding: 18px; }
+  @media (max-width: 760px) {
+    .topbar { padding: 10px 12px 0; }
+    .brand-text { font-size: 15px; }
+    .header-sub { font-size: 11px; padding-bottom: 8px; }
+    .tabs { gap: 0; }
+    .tab { padding: 8px 4px; font-size: 12px; }
+    .side-panel {
+      left: 0 !important; right: 0 !important;
+      width: 100% !important; max-width: 100vw !important;
+      top: auto; bottom: 0;
+      max-height: 48vh; border-radius: 14px 14px 0 0;
+      border-left: none; border-right: none; border-bottom: none;
+      box-shadow: 0 -6px 24px rgba(28,37,65,0.18);
+      padding: 12px 14px 16px;
+      margin: 0;
+    }
+    .map-legend { display: none; }
+    .toolbar { margin-bottom: 10px; }
+    .add-btn { padding: 8px 12px; font-size: 13px; }
+    .stats-row { margin-bottom: 10px; }
+    .stat-cell { padding: 8px 10px; }
+    .stat-num { font-size: 16px; }
+    .row { padding: 10px 12px; }
+    .route-text { font-size: 13px; }
+    .overlay { padding: 0; align-items: flex-end; }
+    .overlay .panel { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; max-height: 92vh; }
+    .panel-footer { position: sticky; bottom: 0; background: var(--paper); padding-top: 12px; padding-bottom: 8px; }
+    .panel { max-width: 100%; border-radius: 12px 12px 0 0; padding: 16px; max-height: 90vh; overflow-y: auto; }
+    .field-grid { grid-template-columns: 1fr; gap: 10px; }
+    #settings-btn { font-size: 22px; padding: 6px; }
+    .leaflet-control-zoom { margin-bottom: 52vh !important; }
+  }
+  @media (max-width: 400px) {
+    .side-panel { max-height: 52vh; }
+    .leaflet-control-zoom { margin-bottom: 56vh !important; }
+  }
+
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+  .count { font-size: 14px; color: var(--muted); }
+  .add-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--amber); color: var(--navy); border: none; border-radius: 3px; padding: 10px 16px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
+  .stat-cell { background: var(--paper); padding: 12px 14px; }
+  .stat-num { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; color: var(--navy); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  .board { border: 1px solid var(--line); background: var(--paper); }
+  .board-header-row { display: none; }
+  .row { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); position: relative; }
+  .row:last-child { border-bottom: none; }
+  .col { display: flex; align-items: center; }
+  .row-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+  .col-date { font-size: 12px; color: var(--muted2); }
+  .col-route { flex-direction: column; align-items: flex-start; gap: 4px; cursor: pointer; width: 100%; }
+  .col-train { font-size: 12px; color: var(--muted); }
+  .col-status { }
+  .col-actions { position: absolute; top: 10px; right: 10px; }
+  .route-text { font-size: 14px; font-weight: 500; }
+  .route-meta { font-size: 11px; color: var(--muted2); }
+  .status-pill { font-size: 11px; border: 1px solid; border-radius: 2px; padding: 3px 8px; }
+  .icon-btn { background: none; border: none; cursor: pointer; padding: 6px; color: var(--muted2); font-size: 15px; }
+
+  .empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 48px 20px; border: 1px dashed var(--line); color: var(--muted); font-size: 14px; text-align: center; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(28,37,65,0.45); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 1000; }
+  .overlay.open { display: flex; }
+  .panel { background: var(--paper); width: 100%; max-width: 480px; border: 1px solid var(--line); padding: 24px; }
+  .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .panel-title { font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600; }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .field-row { margin-bottom: 14px; }
+  label.field-label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+  input, textarea { width: 100%; border: 1px solid var(--line); background: #fff; border-radius: 2px; padding: 9px 10px; font-size: 14px; font-family: inherit; box-sizing: border-box; }
+  .toggle-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .toggle-btn { border: 1px solid var(--line); background: #fff; color: var(--navy); border-radius: 2px; padding: 7px 12px; font-size: 13px; font-family: inherit; cursor: pointer; }
+  .toggle-btn.active { background: var(--navy); color: var(--paper); }
+  .error-msg { color: var(--red); font-size: 13px; margin-bottom: 12px; }
+  .panel-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .delete-link { background: none; border: none; color: var(--red); font-size: 13px; cursor: pointer; padding: 0; font-family: inherit; }
+  .save-btn { background: var(--navy); color: var(--paper); border: none; border-radius: 3px; padding: 10px 20px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; margin-left: auto; }
+  .hint { font-size: 11px; color: var(--muted2); margin-top: 4px; }
+
+  .rank-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; border-bottom: 1px solid var(--line-soft);
+    font-size: 13px;
+  }
+  .rank-row:last-child { border-bottom: none; }
+  .rank-name { color: var(--navy); }
+  .rank-count { color: var(--muted); font-weight: 600; }
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .station-rank {
+    grid-column: 1 / -1;
+    background: var(--paper2, #f7f5ef);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+
+
+  .ac-wrap { position: relative; }
+  .ac-list {
+    position: absolute; left: 0; right: 0; top: 100%; z-index: 50;
+    background: #fff; border: 1px solid var(--line); border-top: none;
+    max-height: 200px; overflow-y: auto; display: none;
+    box-shadow: 0 8px 20px rgba(28,37,65,0.12);
+  }
+  .ac-list.open { display: block; }
+  .ac-item {
+    padding: 10px 12px; font-size: 14px; cursor: pointer;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover, .ac-item.active { background: #F0EDE4; }
+
+
+  /* Bottom sheet states */
+  .side-panel {
+    transition: max-height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .side-panel.sheet-peek {
+    max-height: 18vh !important;
+    overflow: hidden;
+  }
+  .side-panel.sheet-full {
+    max-height: 85vh !important;
+    overflow-y: auto;
+  }
+  .sheet-handle {
+    width: 36px; height: 4px; background: #C9C4B4;
+    border-radius: 2px; margin: 2px auto 12px; cursor: grab;
+    flex-shrink: 0;
+  }
+  .sheet-peek-content { display: none; padding: 0 2px 4px; }
+  .side-panel.sheet-peek .sheet-peek-content { display: block; }
+  .side-panel.sheet-peek #page-future > *:not(.sheet-peek-content),
+  .side-panel.sheet-peek #page-history > *:not(.sheet-peek-content) {
+    display: none !important;
+  }
+  .side-panel.sheet-full .sheet-peek-content { display: none !important; }
+  .peek-route {
+    font-size: 15px; font-weight: 600; color: var(--navy);
+    padding: 2px 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .peek-meta {
+    font-size: 12px; color: var(--muted);
+  }
+  .peek-stats {
+    display: flex; gap: 28px; padding: 2px 0; align-items: baseline;
+  }
+  .peek-stat-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px; font-weight: 600; color: var(--navy);
+  }
+  .peek-stat-label {
+    font-size: 11px; color: var(--muted); margin-top: 1px;
+  }
+  @media (min-width: 761px) {
+    .sheet-handle, .sheet-peek-content { display: none !important; }
+    .side-panel.sheet-peek, .side-panel.sheet-full {
+      max-height: none !important; overflow-y: auto !important;
+    }
+    .side-panel.sheet-peek #page-future > *:not(.sheet-peek-content),
+    .side-panel.sheet-peek #page-history > *:not(.sheet-peek-content) {
+      display: block !important;
+    }
+    .side-panel.sheet-peek .stats-row,
+    .side-panel.sheet-peek .toolbar,
+    .side-panel.sheet-peek .board,
+    .side-panel.sheet-peek .empty {
+      display: revert !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+<div class="topbar">
+  <div class="header-inner" style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div class="brand">🧳 <span class="brand-text" id="brand-text">ТравелЕк</span></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:2px;">
+      <button class="icon-btn" id="achievements-btn" title="Achievements" style="color:#9AA3B8;font-size:20px;padding:4px 8px;">🏆</button>
+      <button class="icon-btn" id="settings-btn" title="Settings" style="color:#9AA3B8;font-size:20px;padding:4px 8px;">⚙</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-tab="future" id="tab-future">Будущие маршруты</button>
+    <button class="tab" data-tab="history" id="tab-history">История и статистика</button>
+  </div>
+</div>
+
+<div class="side-panel sheet-peek" id="side-panel">
+  <div class="sheet-handle" id="sheet-handle"></div>
+  <div id="page-future">
+    <div class="sheet-peek-content" id="peek-future">
+      <div class="peek-route" id="peek-future-text">—</div>
+      <div class="peek-meta" id="peek-future-meta"></div>
+    </div>
+    <div class="toolbar">
+      <span class="count" id="future-count">—</span>
+      <button class="add-btn" id="add-future-btn">+ Добавить маршрут</button>
+    </div>
+    <div id="future-empty" class="empty" style="display:none;">Пока нет запланированных маршрутов. Добавь первый — откуда, куда и когда.</div>
+    <div class="board" id="future-board" style="display:none;">
+      <div class="board-header-row">
+        <span class="col col-date">Дата</span>
+        <span class="col col-route">Маршрут</span>
+        <span class="col col-train">Поезд</span>
+        <span class="col col-status">Статус</span>
+        <span class="col col-actions"></span>
+      </div>
+      <div id="future-rows"></div>
+    </div>
+  </div>
+
+  <div id="page-history" style="display:none;">
+    <div class="sheet-peek-content" id="peek-history">
+      <div class="peek-stats">
+        <div><div class="peek-stat-num mono" id="peek-km">—</div><div class="peek-stat-label" id="peek-km-label">км</div></div>
+        <div><div class="peek-stat-num mono" id="peek-cities">0</div><div class="peek-stat-label" id="peek-cities-label">городов</div></div>
+      </div>
+    </div>
+    <div class="stats-row" id="stats-row"></div>
+    <div class="toolbar">
+      <span class="count" id="history-count">—</span>
+      <button class="add-btn" id="add-history-btn">+ Добавить поездку</button>
+    </div>
+    <div id="history-empty" class="empty" style="display:none;">История пока пуста. Добавь завершённую поездку, чтобы увидеть статистику.</div>
+    <div class="board" id="history-board" style="display:none;">
+      <div class="board-header-row">
+        <span class="col col-date">Дата</span>
+        <span class="col col-route">Маршрут</span>
+        <span class="col col-train">Поезд / время в пути</span>
+        <span class="col col-status">км</span>
+        <span class="col col-actions"></span>
+      </div>
+      <div id="history-rows"></div>
+    </div>
+  </div>
+</div>
+
+
+<div class="overlay" id="settings-overlay">
+  <div class="panel" style="max-width:360px;">
+    <div class="panel-header">
+      <span class="panel-title" id="settings-title">Настройки</span>
+      <button type="button" class="icon-btn" id="close-settings" style="font-size:18px;">✕</button>
+    </div>
+    <div class="field-row">
+      <label class="field-label" id="lang-label">Язык</label>
+      <div class="toggle-group" id="lang-toggle">
+        <button type="button" class="toggle-btn" data-lang="ru">Русский</button>
+        <button type="button" class="toggle-btn" data-lang="en">English</button>
+        <button type="button" class="toggle-btn" data-lang="be">Беларуская</button>
+        <button type="button" class="toggle-btn" data-lang="kk">Қазақша</button>
+        <button type="button" class="toggle-btn" data-lang="zh">中文</button>
+        <button type="button" class="toggle-btn" data-lang="uz">O'zbekcha</button>
+      </div>
+    </div>
+    <div class="field-row">
+      <label class="field-label" id="color-future-label">Цвет будущих маршрутов</label>
+      <div class="toggle-group" id="color-future-toggle"></div>
+    </div>
+    <div class="field-row">
+      <label class="field-label" id="color-history-label">Цвет прошедших поездок</label>
+      <div class="toggle-group" id="color-history-toggle"></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="achievements-overlay">
+  <div class="panel" style="max-width:480px;">
+    <div class="panel-header">
+      <span class="panel-title" id="achievements-title">Достижения</span>
+      <button type="button" class="icon-btn" id="close-achievements" style="font-size:18px;">✕</button>
+    </div>
+    <div id="achievements-list"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <form class="panel" id="trip-form">
+    <div class="panel-header">
+      <span class="panel-title" id="form-title">Новый маршрут</span>
+      <button type="button" class="icon-btn" id="close-form" style="font-size:18px;">✕</button>
+    </div>
+
+    <div class="field-grid">
+      <div class="field-row">
+        <label class="field-label" id="lbl-from">Откуда</label>
+        <div class="ac-wrap">
+          <input id="f-from" placeholder="Москва (Ленинградский)" autocomplete="off" />
+          <div class="ac-list" id="ac-from"></div>
+        </div>
+      </div>
+      <div class="field-row">
+        <label class="field-label" id="lbl-to">Куда</label>
+        <div class="ac-wrap">
+          <input id="f-to" placeholder="Санкт-Петербург (Московский)" autocomplete="off" />
+          <div class="ac-list" id="ac-to"></div>
+        </div>
+      </div>
+      
+      <div class="field-row" id="named-train-row" style="display:none;">
+        <label class="field-label" id="lbl-named-train">Именной поезд</label>
+        <div class="toggle-group" id="named-train-toggle"></div>
+      </div>
+      
+    </div>
+
+    <div class="field-grid">
+      <div class="field-row">
+        <label class="field-label" id="lbl-dep-date">Дата отправления</label>
+        <input id="f-date" type="date" />
+      </div>
+      <div class="field-row">
+        <label class="field-label" id="lbl-dep-time">Время отправления</label>
+        <input id="f-time" type="time" />
+      </div>
+    </div>
+
+    <div class="field-grid" id="arrival-fields">
+      <div class="field-row">
+        <label class="field-label" id="lbl-arr-date">Дата прибытия</label>
+        <input id="f-arr-date" type="date" />
+      </div>
+      <div class="field-row">
+        <label class="field-label" id="lbl-arr-time">Время прибытия</label>
+        <input id="f-arr-time" type="time" />
+        <div class="hint" id="arr-hint">Нужно для подсчёта времени в пути в статистике</div>
+      </div>
+    </div>
+
+    <div class="field-grid">
+      <div class="field-row">
+        <label class="field-label" id="lbl-train">Номер поезда</label>
+        <input id="f-train" placeholder="№ 001А" />
+      </div>
+      <div class="field-row">
+        <label class="field-label" id="lbl-seat">Вагон / место</label>
+        <input id="f-seat" placeholder="Вагон 5, место 12" />
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label class="field-label" id="lbl-status">Статус</label>
+      <div class="toggle-group" id="status-toggle"></div>
+    </div>
+
+    <div class="field-row">
+      <label class="field-label" id="lbl-special">Особый поезд</label>
+      <div class="toggle-group" id="special-toggle"></div>
+    </div>
+
+    <div class="field-row">
+      <label class="field-label" id="lbl-notes">Заметки</label>
+      <textarea id="f-notes" rows="3" placeholder="Пересадка, контакты…"></textarea>
+    </div>
+
+    <div class="error-msg" id="form-error" style="display:none;"></div>
+
+    <div class="panel-footer">
+      <button type="button" class="delete-link" id="delete-btn" style="display:none;">Удалить</button>
+      <button type="submit" class="save-btn" id="save-btn">Сохранить</button>
+    </div>
+  </form>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.20/leaflet-maplibre-gl.js"></script>
+<!-- real-network removed for performance; distances use schematic graph -->
+<script>
+const CITIES = [
+  // Moscow terminals
+  {name:"Москва (Ленинградский)", nameEn:"Moscow (Leningradsky)", country:"Россия", countryEn:"Russia", lat:55.7764, lng:37.6556, stationOf:"москва"},
+  {name:"Москва (Ярославский)", nameEn:"Moscow (Yaroslavsky)", country:"Россия", countryEn:"Russia", lat:55.7766, lng:37.6568, stationOf:"москва"},
+  {name:"Москва (Казанский)", nameEn:"Moscow (Kazansky)", country:"Россия", countryEn:"Russia", lat:55.7743, lng:37.6558, stationOf:"москва"},
+  {name:"Москва (Курский)", nameEn:"Moscow (Kursky)", country:"Россия", countryEn:"Russia", lat:55.7565, lng:37.6604, stationOf:"москва"},
+  {name:"Москва (Белорусский)", nameEn:"Moscow (Belorussky)", country:"Россия", countryEn:"Russia", lat:55.7756, lng:37.5847, stationOf:"москва"},
+  {name:"Москва (Киевский)", nameEn:"Moscow (Kievsky)", country:"Россия", countryEn:"Russia", lat:55.7431, lng:37.5665, stationOf:"москва"},
+  {name:"Москва (Павелецкий)", nameEn:"Moscow (Paveletsky)", country:"Россия", countryEn:"Russia", lat:55.7297, lng:37.6391, stationOf:"москва"},
+  // SPb terminals
+  {name:"Санкт-Петербург (Московский)", nameEn:"Saint Petersburg (Moskovsky)", country:"Россия", countryEn:"Russia", lat:59.9286, lng:30.3622, stationOf:"санкт-петербург"},
+  {name:"Санкт-Петербург (Финляндский)", nameEn:"Saint Petersburg (Finlyandsky)", country:"Россия", countryEn:"Russia", lat:59.9556, lng:30.3567, stationOf:"санкт-петербург"},
+  {name:"Санкт-Петербург (Ладожский)", nameEn:"Saint Petersburg (Ladozhsky)", country:"Россия", countryEn:"Russia", lat:59.9320, lng:30.4400, stationOf:"санкт-петербург"},
+  {name:"Санкт-Петербург (Витебский)", nameEn:"Saint Petersburg (Vitebsky)", country:"Россия", countryEn:"Russia", lat:59.9190, lng:30.3290, stationOf:"санкт-петербург"},
+  // Centre / Northwest
+  {name:"Тверь", nameEn:"Tver", country:"Россия", countryEn:"Russia", lat:56.8587, lng:35.9176},
+  {name:"Великий Новгород", nameEn:"Veliky Novgorod", country:"Россия", countryEn:"Russia", lat:58.5228, lng:31.2699},
+  {name:"Псков", nameEn:"Pskov", country:"Россия", countryEn:"Russia", lat:57.8194, lng:28.3318},
+  {name:"Петрозаводск", nameEn:"Petrozavodsk", country:"Россия", countryEn:"Russia", lat:61.7849, lng:34.3469},
+  {name:"Мурманск", nameEn:"Murmansk", country:"Россия", countryEn:"Russia", lat:68.9585, lng:33.0827},
+  {name:"Архангельск", nameEn:"Arkhangelsk", country:"Россия", countryEn:"Russia", lat:64.5401, lng:40.5433},
+  {name:"Вологда", nameEn:"Vologda", country:"Россия", countryEn:"Russia", lat:59.2239, lng:39.8839},
+  {name:"Ярославль", nameEn:"Yaroslavl", country:"Россия", countryEn:"Russia", lat:57.6261, lng:39.8845},
+  {name:"Кострома", nameEn:"Kostroma", country:"Россия", countryEn:"Russia", lat:57.7676, lng:40.9269},
+  {name:"Иваново", nameEn:"Ivanovo", country:"Россия", countryEn:"Russia", lat:56.9972, lng:40.9714},
+  {name:"Владимир", nameEn:"Vladimir", country:"Россия", countryEn:"Russia", lat:56.1290, lng:40.4066},
+  {name:"Нижний Новгород", nameEn:"Nizhny Novgorod", country:"Россия", countryEn:"Russia", lat:56.3269, lng:44.0075},
+  {name:"Чебоксары", nameEn:"Cheboksary", country:"Россия", countryEn:"Russia", lat:56.1439, lng:47.2489},
+  {name:"Казань", nameEn:"Kazan", country:"Россия", countryEn:"Russia", lat:55.7961, lng:49.1064},
+  {name:"Ульяновск", nameEn:"Ulyanovsk", country:"Россия", countryEn:"Russia", lat:54.3142, lng:48.4031},
+  {name:"Саранск", nameEn:"Saransk", country:"Россия", countryEn:"Russia", lat:54.1838, lng:45.1749},
+  {name:"Пенза", nameEn:"Penza", country:"Россия", countryEn:"Russia", lat:53.1950, lng:45.0183},
+  {name:"Самара", nameEn:"Samara", country:"Россия", countryEn:"Russia", lat:53.1950, lng:50.1000},
+  {name:"Тольятти", nameEn:"Tolyatti", country:"Россия", countryEn:"Russia", lat:53.5303, lng:49.3461},
+  {name:"Саратов", nameEn:"Saratov", country:"Россия", countryEn:"Russia", lat:51.5331, lng:46.0342},
+  {name:"Волгоград", nameEn:"Volgograd", country:"Россия", countryEn:"Russia", lat:48.7080, lng:44.5133},
+  {name:"Астрахань", nameEn:"Astrakhan", country:"Россия", countryEn:"Russia", lat:46.3497, lng:48.0408},
+  // South
+  {name:"Тула", nameEn:"Tula", country:"Россия", countryEn:"Russia", lat:54.1931, lng:37.6173},
+  {name:"Орёл", nameEn:"Oryol", country:"Россия", countryEn:"Russia", lat:52.9703, lng:36.0635},
+  {name:"Курск", nameEn:"Kursk", country:"Россия", countryEn:"Russia", lat:51.7304, lng:36.1926},
+  {name:"Белгород", nameEn:"Belgorod", country:"Россия", countryEn:"Russia", lat:50.5997, lng:36.5983},
+  {name:"Воронеж", nameEn:"Voronezh", country:"Россия", countryEn:"Russia", lat:51.6720, lng:39.1843},
+  {name:"Липецк", nameEn:"Lipetsk", country:"Россия", countryEn:"Russia", lat:52.6088, lng:39.5992},
+  {name:"Тамбов", nameEn:"Tambov", country:"Россия", countryEn:"Russia", lat:52.7213, lng:41.4523},
+  {name:"Ростов-на-Дону", nameEn:"Rostov-on-Don", country:"Россия", countryEn:"Russia", lat:47.2357, lng:39.7015},
+  {name:"Краснодар", nameEn:"Krasnodar", country:"Россия", countryEn:"Russia", lat:45.0355, lng:38.9753},
+  {name:"Сочи", nameEn:"Sochi", country:"Россия", countryEn:"Russia", lat:43.5855, lng:39.7231},
+  {name:"Анапа", nameEn:"Anapa", country:"Россия", countryEn:"Russia", lat:44.8951, lng:37.3162},
+  {name:"Новороссийск", nameEn:"Novorossiysk", country:"Россия", countryEn:"Russia", lat:44.7239, lng:37.7687},
+  {name:"Ставрополь", nameEn:"Stavropol", country:"Россия", countryEn:"Russia", lat:45.0445, lng:41.9690},
+  {name:"Минеральные Воды", nameEn:"Mineralnye Vody", country:"Россия", countryEn:"Russia", lat:44.2103, lng:43.1353},
+  {name:"Пятигорск", nameEn:"Pyatigorsk", country:"Россия", countryEn:"Russia", lat:44.0486, lng:43.0594},
+  {name:"Кисловодск", nameEn:"Kislovodsk", country:"Россия", countryEn:"Russia", lat:43.9053, lng:42.7167},
+  {name:"Махачкала", nameEn:"Makhachkala", country:"Россия", countryEn:"Russia", lat:42.9849, lng:47.5047},
+  {name:"Грозный", nameEn:"Grozny", country:"Россия", countryEn:"Russia", lat:43.3180, lng:45.6885},
+  // Urals / Volga
+  {name:"Киров", nameEn:"Kirov", country:"Россия", countryEn:"Russia", lat:58.6035, lng:49.6680},
+  {name:"Ижевск", nameEn:"Izhevsk", country:"Россия", countryEn:"Russia", lat:56.8527, lng:53.2115},
+  {name:"Пермь", nameEn:"Perm", country:"Россия", countryEn:"Russia", lat:58.0105, lng:56.2502},
+  {name:"Екатеринбург", nameEn:"Yekaterinburg", country:"Россия", countryEn:"Russia", lat:56.8389, lng:60.6057},
+  {name:"Челябинск", nameEn:"Chelyabinsk", country:"Россия", countryEn:"Russia", lat:55.1644, lng:61.4368},
+  {name:"Уфа", nameEn:"Ufa", country:"Россия", countryEn:"Russia", lat:54.7388, lng:55.9721},
+  {name:"Оренбург", nameEn:"Orenburg", country:"Россия", countryEn:"Russia", lat:51.7727, lng:55.0988},
+  {name:"Тюмень", nameEn:"Tyumen", country:"Россия", countryEn:"Russia", lat:57.1522, lng:65.5272},
+  {name:"Сургут", nameEn:"Surgut", country:"Россия", countryEn:"Russia", lat:61.2540, lng:73.3962},
+  {name:"Нижневартовск", nameEn:"Nizhnevartovsk", country:"Россия", countryEn:"Russia", lat:60.9397, lng:76.5696},
+  // Siberia / Far East
+  {name:"Омск", nameEn:"Omsk", country:"Россия", countryEn:"Russia", lat:54.9885, lng:73.3242},
+  {name:"Новосибирск", nameEn:"Novosibirsk", country:"Россия", countryEn:"Russia", lat:55.0302, lng:82.9204},
+  {name:"Барнаул", nameEn:"Barnaul", country:"Россия", countryEn:"Russia", lat:53.3468, lng:83.7768},
+  {name:"Кемерово", nameEn:"Kemerovo", country:"Россия", countryEn:"Russia", lat:55.3541, lng:86.0885},
+  {name:"Новокузнецк", nameEn:"Novokuznetsk", country:"Россия", countryEn:"Russia", lat:53.7596, lng:87.1216},
+  {name:"Томск", nameEn:"Tomsk", country:"Россия", countryEn:"Russia", lat:56.4846, lng:84.9476},
+  {name:"Красноярск", nameEn:"Krasnoyarsk", country:"Россия", countryEn:"Russia", lat:56.0153, lng:92.8932},
+  {name:"Абакан", nameEn:"Abakan", country:"Россия", countryEn:"Russia", lat:53.7210, lng:91.4424},
+  {name:"Иркутск", nameEn:"Irkutsk", country:"Россия", countryEn:"Russia", lat:52.2869, lng:104.3050},
+  {name:"Улан-Удэ", nameEn:"Ulan-Ude", country:"Россия", countryEn:"Russia", lat:51.8339, lng:107.5841},
+  {name:"Чита", nameEn:"Chita", country:"Россия", countryEn:"Russia", lat:52.0339, lng:113.4994},
+  {name:"Благовещенск", nameEn:"Blagoveshchensk", country:"Россия", countryEn:"Russia", lat:50.2905, lng:127.5272},
+  {name:"Хабаровск", nameEn:"Khabarovsk", country:"Россия", countryEn:"Russia", lat:48.4827, lng:135.0838},
+  {name:"Владивосток", nameEn:"Vladivostok", country:"Россия", countryEn:"Russia", lat:43.1155, lng:131.8855},
+  {name:"Южно-Сахалинск", nameEn:"Yuzhno-Sakhalinsk", country:"Россия", countryEn:"Russia", lat:46.9591, lng:142.7380},
+  {name:"Калининград", nameEn:"Kaliningrad", country:"Россия", countryEn:"Russia", lat:54.7104, lng:20.4522},
+  // CIS
+  {name:"Керчь", nameEn:"Kerch", country:"Россия", countryEn:"Russia", lat:45.3370, lng:36.4683},
+  {name:"Симферополь", nameEn:"Simferopol", country:"Россия", countryEn:"Russia", lat:44.9521, lng:34.1024},
+  {name:"Севастополь", nameEn:"Sevastopol", country:"Россия", countryEn:"Russia", lat:44.6167, lng:33.5254},
+  {name:"Евпатория", nameEn:"Yevpatoria", country:"Россия", countryEn:"Russia", lat:45.1902, lng:33.3678},
+  {name:"Феодосия", nameEn:"Feodosia", country:"Россия", countryEn:"Russia", lat:45.0319, lng:35.3824},
+  {name:"Джанкой", nameEn:"Dzhankoi", country:"Россия", countryEn:"Russia", lat:45.7091, lng:34.3927},
+  {name:"Бахчисарай", nameEn:"Bakhchisarai", country:"Россия", countryEn:"Russia", lat:44.7551, lng:33.8616},
+  {name:"Гродно", nameEn:"Grodno", country:"Беларусь", countryEn:"Belarus", lat:53.6694, lng:23.8131},
+  {name:"Брест", nameEn:"Brest", country:"Беларусь", countryEn:"Belarus", lat:52.0975, lng:23.6879},
+  {name:"Гомель", nameEn:"Gomel", country:"Беларусь", countryEn:"Belarus", lat:52.4345, lng:30.9754},
+  {name:"Витебск", nameEn:"Vitebsk", country:"Беларусь", countryEn:"Belarus", lat:55.1904, lng:30.2049},
+  {name:"Могилёв", nameEn:"Mogilev", country:"Беларусь", countryEn:"Belarus", lat:53.9007, lng:30.3314},
+  {name:"Орша", nameEn:"Orsha", country:"Беларусь", countryEn:"Belarus", lat:54.5081, lng:30.4258},
+  {name:"Барановичи", nameEn:"Baranovichi", country:"Беларусь", countryEn:"Belarus", lat:53.1327, lng:26.0139},
+  {name:"Борисов", nameEn:"Borisov", country:"Беларусь", countryEn:"Belarus", lat:54.2222, lng:28.5050},
+  {name:"Полоцк", nameEn:"Polotsk", country:"Беларусь", countryEn:"Belarus", lat:55.4879, lng:28.7856},
+  {name:"Лида", nameEn:"Lida", country:"Беларусь", countryEn:"Belarus", lat:53.8833, lng:25.3000},
+  {name:"Молодечно", nameEn:"Molodechno", country:"Беларусь", countryEn:"Belarus", lat:54.3176, lng:26.8390},
+  {name:"Минск", nameEn:"Minsk", country:"Беларусь", countryEn:"Belarus", lat:53.9006, lng:27.5590},
+  {name:"Брест", nameEn:"Brest", country:"Беларусь", countryEn:"Belarus", lat:52.0975, lng:23.6879},
+  {name:"Гомель", nameEn:"Gomel", country:"Беларусь", countryEn:"Belarus", lat:52.4345, lng:30.9754},
+  {name:"Витебск", nameEn:"Vitebsk", country:"Беларусь", countryEn:"Belarus", lat:55.1904, lng:30.2049},
+  {name:"Актобе", nameEn:"Aktobe", country:"Казахстан", countryEn:"Kazakhstan", lat:50.2839, lng:57.1661},
+  {name:"Атырау", nameEn:"Atyrau", country:"Казахстан", countryEn:"Kazakhstan", lat:47.1164, lng:51.8826},
+  {name:"Актау", nameEn:"Aktau", country:"Казахстан", countryEn:"Kazakhstan", lat:43.6481, lng:51.1722},
+  {name:"Костанай", nameEn:"Kostanay", country:"Казахстан", countryEn:"Kazakhstan", lat:53.2198, lng:63.6354},
+  {name:"Павлодар", nameEn:"Pavlodar", country:"Казахстан", countryEn:"Kazakhstan", lat:52.2873, lng:76.9674},
+  {name:"Семей", nameEn:"Semey", country:"Казахстан", countryEn:"Kazakhstan", lat:50.4111, lng:80.2275},
+  {name:"Усть-Каменогорск", nameEn:"Ust-Kamenogorsk", country:"Казахстан", countryEn:"Kazakhstan", lat:49.9483, lng:82.6278},
+  {name:"Туркестан", nameEn:"Turkestan", country:"Казахстан", countryEn:"Kazakhstan", lat:43.3017, lng:68.2517},
+  {name:"Кызылорда", nameEn:"Kyzylorda", country:"Казахстан", countryEn:"Kazakhstan", lat:44.8488, lng:65.4823},
+  {name:"Тараз", nameEn:"Taraz", country:"Казахстан", countryEn:"Kazakhstan", lat:42.9000, lng:71.3667},
+  {name:"Петропавловск", nameEn:"Petropavl", country:"Казахстан", countryEn:"Kazakhstan", lat:54.8667, lng:69.1500},
+  {name:"Кокшетау", nameEn:"Kokshetau", country:"Казахстан", countryEn:"Kazakhstan", lat:53.2833, lng:69.3833},
+  {name:"Экибастуз", nameEn:"Ekibastuz", country:"Казахстан", countryEn:"Kazakhstan", lat:51.7237, lng:75.3224},
+  {name:"Жезказган", nameEn:"Zhezkazgan", country:"Казахстан", countryEn:"Kazakhstan", lat:47.7833, lng:67.7000},
+  {name:"Балхаш", nameEn:"Balkhash", country:"Казахстан", countryEn:"Kazakhstan", lat:46.8481, lng:74.9950},
+  {name:"Талдыкорган", nameEn:"Taldykorgan", country:"Казахстан", countryEn:"Kazakhstan", lat:45.0178, lng:78.3772},
+  {name:"Алматы", nameEn:"Almaty", country:"Казахстан", countryEn:"Kazakhstan", lat:43.2380, lng:76.9450},
+  {name:"Астана", nameEn:"Astana", country:"Казахстан", countryEn:"Kazakhstan", lat:51.1694, lng:71.4491},
+  {name:"Шымкент", nameEn:"Shymkent", country:"Казахстан", countryEn:"Kazakhstan", lat:42.3417, lng:69.5901},
+  {name:"Караганда", nameEn:"Karaganda", country:"Казахстан", countryEn:"Kazakhstan", lat:49.8047, lng:73.1094},
+  {name:"Ташкент", nameEn:"Tashkent", country:"Узбекистан", countryEn:"Uzbekistan", lat:41.2995, lng:69.2401},
+  {name:"Самарканд", nameEn:"Samarkand", country:"Узбекистан", countryEn:"Uzbekistan", lat:39.6542, lng:66.9597},
+  {name:"Бухара", nameEn:"Bukhara", country:"Узбекистан", countryEn:"Uzbekistan", lat:39.7747, lng:64.4286},
+  {name:"Бишкек", nameEn:"Bishkek", country:"Киргизия", countryEn:"Kyrgyzstan", lat:42.8746, lng:74.5698},
+  {name:"Душанбе", nameEn:"Dushanbe", country:"Таджикистан", countryEn:"Tajikistan", lat:38.5598, lng:68.7870},
+  {name:"Ереван", nameEn:"Yerevan", country:"Армения", countryEn:"Armenia", lat:40.1792, lng:44.4991},
+  {name:"Баку", nameEn:"Baku", country:"Азербайджан", countryEn:"Azerbaijan", lat:40.4093, lng:49.8671},
+  {name:"Кишинёв", nameEn:"Chisinau", country:"Молдова", countryEn:"Moldova", lat:47.0105, lng:28.8638},
+  {name:"Тбилиси", nameEn:"Tbilisi", country:"Грузия", countryEn:"Georgia", lat:41.7151, lng:44.8271},
+  {name:"Батуми", nameEn:"Batumi", country:"Грузия", countryEn:"Georgia", lat:41.6168, lng:41.6367},
+  {name:"Гюмри", nameEn:"Gyumri", country:"Армения", countryEn:"Armenia", lat:40.7942, lng:43.8453},
+  {name:"Гянджа", nameEn:"Ganja", country:"Азербайджан", countryEn:"Azerbaijan", lat:40.6828, lng:46.3606},
+  {name:"Сумгаит", nameEn:"Sumqayit", country:"Азербайджан", countryEn:"Azerbaijan", lat:40.5897, lng:49.6686},
+  {name:"Нальчик", nameEn:"Nalchik", country:"Россия", countryEn:"Russia", lat:43.4981, lng:43.6189},
+  {name:"Владикавказ", nameEn:"Vladikavkaz", country:"Россия", countryEn:"Russia", lat:43.0367, lng:44.6678},
+  {name:"Черкесск", nameEn:"Cherkessk", country:"Россия", countryEn:"Russia", lat:44.2269, lng:42.0469},
+  {name:"Элиста", nameEn:"Elista", country:"Россия", countryEn:"Russia", lat:46.3078, lng:44.2558},
+  {name:"Дербент", nameEn:"Derbent", country:"Россия", countryEn:"Russia", lat:42.0670, lng:48.2830},
+  {name:"Туркменабад", nameEn:"Turkmenabat", country:"Туркменистан", countryEn:"Turkmenistan", lat:39.0833, lng:63.5786},
+  {name:"Ашхабад", nameEn:"Ashgabat", country:"Туркменистан", countryEn:"Turkmenistan", lat:37.9500, lng:58.3833},
+  {name:"Мары", nameEn:"Mary", country:"Туркменистан", countryEn:"Turkmenistan", lat:37.6000, lng:61.8333},
+  {name:"Навои", nameEn:"Navoiy", country:"Узбекистан", countryEn:"Uzbekistan", lat:40.0844, lng:65.3792},
+  {name:"Нукус", nameEn:"Nukus", country:"Узбекистан", countryEn:"Uzbekistan", lat:42.4531, lng:59.6103},
+  {name:"Ургенч", nameEn:"Urgench", country:"Узбекистан", countryEn:"Uzbekistan", lat:41.5500, lng:60.6333},
+  {name:"Хива", nameEn:"Khiva", country:"Узбекистан", countryEn:"Uzbekistan", lat:41.3783, lng:60.3639},
+  {name:"Андижан", nameEn:"Andijan", country:"Узбекистан", countryEn:"Uzbekistan", lat:40.7833, lng:72.3333},
+  {name:"Фергана", nameEn:"Fergana", country:"Узбекистан", countryEn:"Uzbekistan", lat:40.3864, lng:71.7864},
+  {name:"Ош", nameEn:"Osh", country:"Киргизия", countryEn:"Kyrgyzstan", lat:40.5297, lng:72.7994},
+  {name:"Худжанд", nameEn:"Khujand", country:"Таджикистан", countryEn:"Tajikistan", lat:40.2833, lng:69.6333},
+  {name:"Бельцы", nameEn:"Balti", country:"Молдова", countryEn:"Moldova", lat:47.7617, lng:27.9289},
+  {name:"Тирасполь", nameEn:"Tiraspol", country:"Молдова", countryEn:"Moldova", lat:46.8403, lng:29.6433},
+  {name:"Муром", nameEn:"Murom", country:"Россия", countryEn:"Russia", lat:55.5761, lng:42.0517},
+  {name:"Арзамас", nameEn:"Arzamas", country:"Россия", countryEn:"Russia", lat:55.3950, lng:43.8400},
+  {name:"Сызрань", nameEn:"Syzran", country:"Россия", countryEn:"Russia", lat:53.1589, lng:48.4672},
+  {name:"Балаково", nameEn:"Balakovo", country:"Россия", countryEn:"Russia", lat:52.0278, lng:47.8000},
+  {name:"Энгельс", nameEn:"Engels", country:"Россия", countryEn:"Russia", lat:51.5011, lng:46.1206},
+  {name:"Новочеркасск", nameEn:"Novocherkassk", country:"Россия", countryEn:"Russia", lat:47.4208, lng:40.0936},
+  {name:"Таганрог", nameEn:"Taganrog", country:"Россия", countryEn:"Russia", lat:47.2362, lng:38.8969},
+  {name:"Волгодонск", nameEn:"Volgodonsk", country:"Россия", countryEn:"Russia", lat:47.5161, lng:42.1500},
+  {name:"Норильск", nameEn:"Norilsk", country:"Россия", countryEn:"Russia", lat:69.3535, lng:88.2027},
+  {name:"Новый Уренгой", nameEn:"Novy Urengoy", country:"Россия", countryEn:"Russia", lat:66.0839, lng:76.6806},
+  {name:"Котлас", nameEn:"Kotlas", country:"Россия", countryEn:"Russia", lat:61.2573, lng:46.6496},
+  {name:"Сыктывкар", nameEn:"Syktyvkar", country:"Россия", countryEn:"Russia", lat:61.6688, lng:50.8364},
+  {name:"Ухта", nameEn:"Ukhta", country:"Россия", countryEn:"Russia", lat:63.5670, lng:53.6837},
+  {name:"Псков", nameEn:"Pskov", country:"Россия", countryEn:"Russia", lat:57.8194, lng:28.3318},
+  {name:"Великие Луки", nameEn:"Velikiye Luki", country:"Россия", countryEn:"Russia", lat:56.3400, lng:30.5500},
+  {name:"Ржев", nameEn:"Rzhev", country:"Россия", countryEn:"Russia", lat:56.2625, lng:34.3281},
+  {name:"Вязьма", nameEn:"Vyazma", country:"Россия", countryEn:"Russia", lat:55.2106, lng:34.2953},
+  {name:"Брянск", nameEn:"Bryansk", country:"Россия", countryEn:"Russia", lat:53.2436, lng:34.3639},
+  {name:"Орёл", nameEn:"Oryol", country:"Россия", countryEn:"Russia", lat:52.9703, lng:36.0635},
+  {name:"Мичуринск", nameEn:"Michurinsk", country:"Россия", countryEn:"Russia", lat:52.8980, lng:40.4980},
+  {name:"Балашов", nameEn:"Balashov", country:"Россия", countryEn:"Russia", lat:51.5500, lng:43.1670},
+  {name:"Камышин", nameEn:"Kamyshin", country:"Россия", countryEn:"Russia", lat:50.0981, lng:45.4156},
+  {name:"Урюпинск", nameEn:"Uryupinsk", country:"Россия", countryEn:"Russia", lat:50.8000, lng:42.0167},
+  {name:"Волжский", nameEn:"Volzhsky", country:"Россия", countryEn:"Russia", lat:48.7861, lng:44.7797},
+  {name:"Стерлитамак", nameEn:"Sterlitamak", country:"Россия", countryEn:"Russia", lat:53.6303, lng:55.9311},
+  {name:"Магнитогорск", nameEn:"Magnitogorsk", country:"Россия", countryEn:"Russia", lat:53.4186, lng:59.0472},
+  {name:"Орск", nameEn:"Orsk", country:"Россия", countryEn:"Russia", lat:51.2049, lng:58.5663},
+  {name:"Курган", nameEn:"Kurgan", country:"Россия", countryEn:"Russia", lat:55.4400, lng:65.3400},
+];
+
+const NAMED_TRAINS = {
+    "москва|санкт-петербург": [{id:"sapsan",name:"Сапсан"},{id:"aurora",name:"Аврора"},{id:"krasnaya",name:"Красная стрела"},{id:"megapolis",name:"Мегаполис"},{id:"nevsky",name:"Невский экспресс"},{id:"grand",name:"Гранд Экспресс"}],
+    "москва|нижний новгород": [{id:"strizh",name:"Стриж"},{id:"volga",name:"Волга"}],
+    "москва|казань": [{id:"tranzit",name:"Транзит"}],
+    "москва|самара": [{id:"zhiguli",name:"Жигули"}],
+    "москва|волгоград": [{id:"volgograd",name:"Волгоград"}],
+    "москва|воронеж": [{id:"voronezh",name:"Воронеж"}],
+    "москва|ростов-на-дону": [{id:"tihiy-don",name:"Тихий Дон"}],
+    "москва|сочи": [{id:"sochi",name:"Сочи"},{id:"premium",name:"Премиум"}],
+    "москва|адлер": [{id:"sochi",name:"Сочи"},{id:"premium",name:"Премиум"}],
+    "москва|новороссийск": [{id:"novoross",name:"Новороссийск"}],
+    "москва|кисловодск": [{id:"kislovodsk",name:"Кисловодск"}],
+    "москва|мурманск": [{id:"arctica",name:"Арктика"}],
+    "москва|архангельск": [{id:"pomorye",name:"Поморье"}],
+    "москва|воркута": [{id:"zapolyarye",name:"Заполярье"}],
+    "москва|новый уренгой": [{id:"yamal",name:"Ямал"}],
+    "москва|сыктывкар": [{id:"syktyvkar",name:"Сыктывкар"}],
+    "москва|псков": [{id:"pskov",name:"Псков"}],
+    "москва|калининград": [{id:"yantar",name:"Янтарь"}],
+    "москва|екатеринбург": [{id:"ural",name:"Урал"}],
+    "москва|челябинск": [{id:"yuzhural",name:"Южный Урал"}],
+    "москва|пермь": [{id:"kama",name:"Кама"}],
+    "москва|новосибирск": [{id:"sibiryak",name:"Сибиряк"}],
+    "москва|красноярск": [{id:"enisey",name:"Енисей"}],
+    "москва|иркутск": [{id:"baikal",name:"Байкал"}],
+    "москва|хабаровск": [{id:"rossiya",name:"Россия"}],
+    "москва|владивосток": [{id:"rossiya",name:"Россия"}],
+    "москва|ташкент": [{id:"uzbekistan",name:"Узбекистан"}],
+    "москва|бишкек": [{id:"kyrgyzstan",name:"Кыргызстан"}],
+    "москва|душанбе": [{id:"tajikistan",name:"Таджикистан"}],
+    "москва|баку": [{id:"azerb",name:"Азербайджан"}],
+    "москва|минск": [{id:"belarus",name:"Беларусь"},{id:"slav-exp",name:"Славянский экспресс"}],
+    "москва|брест": [{id:"bug",name:"Буг"}],
+    "санкт-петербург|калининград": [{id:"yantar",name:"Янтарь"}],
+    "санкт-петербург|мурманск": [{id:"arctica",name:"Арктика"}],
+    "минск|гродно": [{id:"neman",name:"Неман"}],
+    "минск|витебск": [{id:"dvina",name:"Двина"}],
+    "минск|гомель": [{id:"polesie",name:"Полесье"}],
+    "алматы|астана": [{id:"talgo",name:"Тальго"},{id:"tulpar",name:"Тулпар"},{id:"baiterek",name:"Байтерек"}],
+    "алматы|актау": [{id:"mangystau",name:"Мангистау"}],
+    "алматы|павлодар": [{id:"ertis",name:"Ертис"}],
+    "алматы|семей": [{id:"zhetysu",name:"Жетысу"}],
+    "ташкент|самарканд": [{id:"afrosiab",name:"Афросиаб"},{id:"registan",name:"Регистан"}],
+    "ташкент|бухара": [{id:"sharq",name:"Шарк"},{id:"bukhoro",name:"Бухоро"}],
+    "ташкент|карши": [{id:"nasaf",name:"Насаф"}],
+    "ташкент|ургенч": [{id:"urgench",name:"Ургенч"}],
+    "ташкент|хива": [{id:"urgench",name:"Ургенч"}],
+  };
+
+function getNamedTrains(from, to) {
+  if (!from || !to) return [];
+  const a = cityIdentity(from), b = cityIdentity(to);
+  if (!a || !b || a === b) return [];
+  return NAMED_TRAINS[a + "|" + b] || NAMED_TRAINS[b + "|" + a] || [];
+}
+
+const FIRST_RAILWAY_IN_WORLD = "1825-09-27";
+function getMaxFutureDate() {
+  const d = new Date(); d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().split("T")[0];
+}
+function normalizeCity(input) {
+  const key = (input || "").toLowerCase().trim();
+  const c = CITY_MAP[key];
+  return c ? c.name : (input || "").trim();
+}
+
+const CITY_MAP = {};
+CITIES.forEach(c => {
+  CITY_MAP[c.name.toLowerCase()] = c;
+  if (c.nameEn) CITY_MAP[c.nameEn.toLowerCase()] = c;
+});
+
+CITY_MAP["питер"] = CITY_MAP["санкт-петербург (московский)"] || CITY_MAP["санкт-петербург"];
+CITY_MAP["спб"] = CITY_MAP["питер"];
+CITY_MAP["петербург"] = CITY_MAP["питер"];
+
+
+// ---- i18n ----
+let lang = localStorage.getItem("cis-lang") || "ru";
+const I18N = {
+  ru: {
+    brand: "ТравелЕк",
+    subtitle: "Маршруты и поездки по поездам — ручной ввод",
+    tabFuture: "Будущие маршруты",
+    tabHistory: "История и статистика",
+    addRoute: "+ Добавить маршрут",
+    addTrip: "+ Добавить поездку",
+    noFuture: "Пока нет запланированных маршрутов. Добавь первый — откуда, куда и когда.",
+    noHistory: "История пока пуста. Добавь завершённую поездку, чтобы увидеть статистику.",
+    formNewRoute: "Новый маршрут",
+    formNewTrip: "Новая поездка",
+    formEdit: "Изменить",
+    from: "Откуда",
+    to: "Куда",
+    depDate: "Дата отправления",
+    depTime: "Время отправления",
+    arrDate: "Дата прибытия",
+    arrTime: "Время прибытия",
+    arrHint: "Нужно для подсчёта времени в пути в статистике",
+    trainNum: "Номер поезда",
+    seat: "Вагон / место",
+    km: "Расстояние по жд, км (если знаешь точно)",
+    kmPlaceholder: "напр. 651 — иначе посчитаю по пути",
+    status: "Статус",
+    notes: "Заметки",
+    notesPh: "Пересадка, контакты…",
+    save: "Сохранить",
+    delete: "Удалить",
+    errRequired: "Укажите станцию отправления, назначения и дату.",
+    planned: "Запланировано",
+    booked: "Куплен билет",
+    done: "Завершено",
+    cancelled: "Отменено",
+    legend: "Тёмные линии — настоящая сеть путей (маршрут и км считаются по ней) для направлений из Москвы: Петербург, Нижний Новгород, Воронеж. Светлый пунктир — схема для остальной сети.",
+    settings: "Настройки",
+    language: "Язык",
+    colorFuture: "Цвет будущих маршрутов",
+    colorHistory: "Цвет прошедших поездок",
+    close: "Закрыть",
+    routes: ["маршрут","маршрута","маршрутов"],
+    trips: ["поездка","поездки","поездок"],
+    noRoutes: "Пока нет маршрутов",
+    noTrips: "Пока нет поездок",
+    tripsLabel: "поездок",
+    kmLabel: "км",
+    kmPartial: "км (часть — по прямой, нет в схеме)",
+    timeInTransit: "времени в пути",
+    cities: "городов",
+    stationVisits: "Посещения станций",
+    topStations: "Топ станций",
+    special: "Особый поезд", retro: "Ретро-поезд", brand: "Именной",
+    tour: "Туристический", night: "Ночной", luxury: "Люкс", other: "Другой",
+    specialStats: "Особые поезда", specialCount: "Особых поездов", specialNone: "Особых поездов пока нет.",
+    achievements: "Достижения",
+    achFirst: "Первая поездка", achTen: "10 поездок", achFifty: "50 поездок", achHundred: "100 поездок",
+    achKm1000: "Первые 1000 км", achKm10000: "10 000 км", achKm50000: "50 000 км",
+    achCities5: "5 городов", achCities20: "20 городов", achCities50: "50 городов",
+    achCountries3: "3 страны", achCountries5: "5 стран",
+    achTranssib: "Транссибирская магистраль", achNight: "Ночная поездка", achLongride: "Целые сутки в пути",
+    achSpecial: "Особый поезд", achAllstatuses: "Все статусы испробованы",
+    achCaucasus: "Кавказ", achAsia: "Средняя Азия",
+    achDone: "Получено", achLocked: "Не получено",
+    regular: "Обычный", namedTrain: "Именной поезд", namedStats: "Именные поезда",
+    achNamedFirst: "Первый именной поезд", achNamedSection: "Именные поезда", achRegularSection: "Достижения",
+  },
+  en: {
+    brand: "TravelEk",
+    subtitle: "Train routes & trips — manual entry",
+    tabFuture: "Upcoming routes",
+    tabHistory: "History & stats",
+    addRoute: "+ Add route",
+    addTrip: "+ Add trip",
+    noFuture: "No planned routes yet. Add the first one — from, to and when.",
+    noHistory: "History is empty. Add a completed trip to see statistics.",
+    formNewRoute: "New route",
+    formNewTrip: "New trip",
+    formEdit: "Edit",
+    from: "From",
+    to: "To",
+    depDate: "Departure date",
+    depTime: "Departure time",
+    arrDate: "Arrival date",
+    arrTime: "Arrival time",
+    arrHint: "Needed to calculate travel time in statistics",
+    trainNum: "Train number",
+    seat: "Car / seat",
+    km: "Rail distance, km (if you know exactly)",
+    kmPlaceholder: "e.g. 651 — otherwise calculated along the track",
+    status: "Status",
+    notes: "Notes",
+    notesPh: "Transfer, contacts…",
+    save: "Save",
+    delete: "Delete",
+    errRequired: "Please specify origin, destination and date.",
+    planned: "Planned",
+    booked: "Ticket bought",
+    done: "Completed",
+    cancelled: "Cancelled",
+    legend: "Dark lines — real track network (routes & km calculated on it) for directions from Moscow: Petersburg, Nizhny Novgorod, Voronezh. Light dashed — schematic for the rest of the network.",
+    settings: "Settings",
+    language: "Language",
+    colorFuture: "Upcoming routes color",
+    colorHistory: "Past trips color",
+    close: "Close",
+    routes: ["route","routes","routes"],
+    trips: ["trip","trips","trips"],
+    noRoutes: "No routes yet",
+    noTrips: "No trips yet",
+    tripsLabel: "trips",
+    kmLabel: "km",
+    kmPartial: "km (some estimated as straight line)",
+    timeInTransit: "time in transit",
+    cities: "cities",
+    stationVisits: "Station visits",
+    topStations: "Top stations",
+    special: "Special train", retro: "Retro train", brand: "Named",
+    tour: "Tourist", night: "Night", luxury: "Luxury", other: "Other",
+    specialStats: "Special trains", specialCount: "Special trains", specialNone: "No special trains yet.",
+    achievements: "Achievements",
+    achFirst: "First trip", achTen: "10 trips", achFifty: "50 trips", achHundred: "100 trips",
+    achKm1000: "First 1,000 km", achKm10000: "10,000 km", achKm50000: "50,000 km",
+    achCities5: "5 cities", achCities20: "20 cities", achCities50: "50 cities",
+    achCountries3: "3 countries", achCountries5: "5 countries",
+    achTranssib: "Trans-Siberian Railway", achNight: "Night trip", achLongride: "A full day on the road",
+    achSpecial: "Special train", achAllstatuses: "All statuses tried",
+    achCaucasus: "Caucasus", achAsia: "Central Asia",
+    achDone: "Unlocked", achLocked: "Locked",
+    regular: "Regular", namedTrain: "Named train", namedStats: "Named trains",
+    achNamedFirst: "First named train", achNamedSection: "Named trains", achRegularSection: "Achievements",
+  }
+ ,
+  be: {
+    brand: "рэйкі · СНД",
+    subtitle: "Маршруты і паездкі цягнікамі — ручны ўвод",
+    tabFuture: "Будучыя маршруты",
+    tabHistory: "Гісторыя і статыстыка",
+    addRoute: "+ Дадаць маршрут",
+    addTrip: "+ Дадаць паездку",
+    noFuture: "Няма запланаваных паездак",
+    noHistory: "Гісторыя пакуль пустая. Дадайце завершаную паездку, каб убачыць статыстыку.",
+    formNewRoute: "Новы маршрут",
+    formNewTrip: "Новая паездка",
+    formEdit: "Рэдагаваць",
+    from: "Адкуль",
+    to: "Куды",
+    depDate: "Дата адпраўлення",
+    depTime: "Час адпраўлення",
+    arrDate: "Дата прыбыцця",
+    arrTime: "Час прыбыцця",
+    arrHint: "Патрэбна для падліку часу ў дарозе",
+    train: "Нумар цягніка",
+    seat: "Вагон / месца",
+    notes: "Нататкі",
+    notesPh: "Перасадка, кантакты…",
+    status: "Статус",
+    save: "Захаваць",
+    cancel: "Скасаваць",
+    delete: "Выдаліць",
+    settings: "Налады",
+    language: "Мова",
+    planned: "Запланавана",
+    booked: "Куплены білет",
+    done: "Завершана",
+    cancelled: "Скасавана",
+    errRequired: "Запоўніце адкуль, куды і дату",
+    colorFuture: "Колер будучых маршрутаў",
+    colorHistory: "Колер мінулых паездак",
+    noRoutes: "У вас няма маршрутаў",
+    emptyFuture: "Няма будучых паездак",
+    emptyHistory: "Няма паездак",
+    tripsLabel: "паездак",
+    kmLabel: "км",
+    kmPartial: "км (частка прыблізна)",
+    timeInTransit: "часу ў дарозе",
+    cities: "гарадоў",
+    stationVisits: "Наведванні станцый", topStations: "Топ станцый",
+    special: "Асаблівы цягнік", retro: "Рэтра-цягнік", brand: "Фірмовы",
+    tour: "Турыстычны", night: "Начны", luxury: "Люкс", other: "Іншы",
+    specialStats: "Асаблівыя цягнікі", specialCount: "Асаблівых цягнікоў",
+    specialNone: "Асаблівых цягнікоў пакуль няма.",
+    achievements: "Дасягненні",
+    achFirst: "Першая паездка", achTen: "10 паездак", achFifty: "50 паездак", achHundred: "100 паездак",
+    achKm1000: "Першыя 1000 км", achKm10000: "10 000 км", achKm50000: "50 000 км",
+    achCities5: "5 гарадоў", achCities20: "20 гарадоў", achCities50: "50 гарадоў",
+    achCountries3: "3 краіны", achCountries5: "5 краін",
+    achTranssib: "Транссіб", achNight: "Начная паездка", achLongride: "Суткі ў дарозе",
+    achSpecial: "Асаблівы цягнік", achAllstatuses: "Усе статусы паспрабаваны",
+    achCaucasus: "Каўказ", achAsia: "Сярэдняя Азія",
+    achDone: "Атрымана", achLocked: "Не атрымана",
+    regular: "Звычайны", namedTrain: "Імянны цягнік", namedStats: "Імянныя цягнікі",
+    achNamedFirst: "Першы імянны цягнік", achNamedSection: "Імянныя цягнікі", achRegularSection: "Дасягненні",
+  },
+  kk: {
+    brand: "рельстер · ТМД",
+    subtitle: "Пойыз бағыттары мен сапарлар — қолмен енгізу",
+    tabFuture: "Болашақ бағыттар",
+    tabHistory: "Тарих және статистика",
+    addRoute: "+ Бағыт қосу",
+    addTrip: "+ Сапар қосу",
+    noFuture: "Жоспарланған сапарлар жоқ",
+    noHistory: "Тарих бос. Статистиканы көру үшін аяқталған сапар қосыңыз.",
+    formNewRoute: "Жаңа бағыт",
+    formNewTrip: "Жаңа сапар",
+    formEdit: "Өңдеу",
+    from: "Қайдан",
+    to: "Қайда",
+    depDate: "Шығу күні",
+    depTime: "Шығу уақыты",
+    arrDate: "Келу күні",
+    arrTime: "Келу уақыты",
+    arrHint: "Жолдағы уақытты есептеу үшін қажет",
+    train: "Пойыз нөмірі",
+    seat: "Вагон / орын",
+    notes: "Жазбалар",
+    notesPh: "Ауысу, байланыс…",
+    status: "Күйі",
+    save: "Сақтау",
+    cancel: "Болдырмау",
+    delete: "Жою",
+    settings: "Баптаулар",
+    language: "Тіл",
+    planned: "Жоспарланған",
+    booked: "Билет сатып алынды",
+    done: "Аяқталды",
+    cancelled: "Болдырылмады",
+    errRequired: "Қайдан, қайда және күнді толтырыңыз",
+    colorFuture: "Болашақ бағыттар түсі",
+    colorHistory: "Өткен сапарлар түсі",
+    noRoutes: "Сізде бағыттар жоқ",
+    emptyFuture: "Болашақ сапарлар жоқ",
+    emptyHistory: "Сапарлар жоқ",
+    tripsLabel: "сапар",
+    kmLabel: "км",
+    kmPartial: "км (кейбірі жуық)",
+    timeInTransit: "жолдағы уақыт",
+    cities: "қала",
+    stationVisits: "Станцияға бару", topStations: "Үздік станциялар",
+    special: "Арнайы пойыз", retro: "Ретро пойыз", brand: "Брендті",
+    tour: "Туристік", night: "Түнгі", luxury: "Люкс", other: "Басқа",
+    specialStats: "Арнайы пойыздар", specialCount: "Арнайы пойыздар", specialNone: "Әзірге арнайы пойыздар жоқ.",
+    achievements: "Жетістіктер",
+    achFirst: "Бірінші сапар", achTen: "10 сапар", achFifty: "50 сапар", achHundred: "100 сапар",
+    achKm1000: "Алғашқы 1000 км", achKm10000: "10 000 км", achKm50000: "50 000 км",
+    achCities5: "5 қала", achCities20: "20 қала", achCities50: "50 қала",
+    achCountries3: "3 ел", achCountries5: "5 ел",
+    achTranssib: "Транссіб", achNight: "Түнгі сапар", achLongride: "Тәулік жолда",
+    achSpecial: "Арнайы пойыз", achAllstatuses: "Барлық мәртебелер",
+    achCaucasus: "Кавказ", achAsia: "Орталық Азия",
+    achDone: "Алынды", achLocked: "Алынбады",
+    regular: "Қарапайым", namedTrain: "Атаулы пойыз", namedStats: "Атаулы пойыздар",
+    achNamedFirst: "Бірінші атаулы пойыз", achNamedSection: "Атаулы пойыздар", achRegularSection: "Жетістіктер",
+  },
+  zh: {
+    brand: "旅行易", subtitle: "火车路线与行程 — 手动输入",
+    tabFuture: "未来路线", tabHistory: "历史与统计", addRoute: "+ 添加路线", addTrip: "+ 添加行程",
+    noFuture: "暂无计划路线。添加第一个 — 从哪里、到哪里、什么时候。", noHistory: "历史记录为空。添加已完成的行程以查看统计。",
+    formNewRoute: "新路线", formNewTrip: "新行程", formEdit: "编辑", from: "出发地", to: "目的地",
+    depDate: "出发日期", depTime: "出发时间", arrDate: "到达日期", arrTime: "到达时间", arrHint: "用于统计行程时间",
+    trainNum: "列车车次", seat: "车厢 / 座位", km: "铁路距离，公里", kmPlaceholder: "例如 651", status: "状态", notes: "备注", notesPh: "换乘、联系方式……",
+    save: "保存", delete: "删除", errRequired: "请指定出发站、到达站和日期。", planned: "已计划", booked: "已购票", done: "已完成", cancelled: "已取消",
+    legend: "深色线条 — 真实轨道网络", settings: "设置", language: "语言", colorFuture: "未来路线颜色", colorHistory: "历史行程颜色", close: "关闭",
+    routes: ["条路线","条路线","条路线"], trips: ["次行程","次行程","次行程"], noRoutes: "暂无路线", noTrips: "暂无行程", tripsLabel: "行程", kmLabel: "公里",
+    kmPartial: "公里（部分为直线估算）", timeInTransit: "行程时间", cities: "城市", stationVisits: "车站访问", topStations: "热门车站",
+    special: "特色列车", retro: "复古列车", brand: "品牌列车", tour: "旅游列车", night: "夜间列车", luxury: "豪华列车", other: "其他",
+    specialStats: "特色列车", specialCount: "特色列车", specialNone: "暂无特色列车。", achievements: "成就",
+    achFirst: "首次旅行", achTen: "10 次旅行", achFifty: "50 次旅行", achHundred: "100 次旅行", achKm1000: "首个 1000 公里", achKm10000: "10 000 公里", achKm50000: "50 000 公里",
+    achCities5: "5 座城市", achCities20: "20 座城市", achCities50: "50 座城市", achCountries3: "3 个国家", achCountries5: "5 个国家",
+    achTranssib: "西伯利亚大铁路", achNight: "夜间旅行", achLongride: "一整天在路上", achSpecial: "特色列车", achAllstatuses: "所有状态已尝试",
+    achCaucasus: "高加索", achAsia: "中亚", achDone: "已获得", achLocked: "未获得", regular: "普通", namedTrain: "品牌列车", namedStats: "品牌列车",
+    achNamedFirst: "首列品牌列车", achNamedSection: "品牌列车", achRegularSection: "成就",
+  },
+  uz: {
+    brand: "TravelEk", subtitle: "Poyezd yo'nalishlari va sayohatlar — qo'lda kiritish", tabFuture: "Kelgusi yo'nalishlar", tabHistory: "Tarix va statistika",
+    addRoute: "+ Yo'nalish qo'shish", addTrip: "+ Sayohat qo'shish", noFuture: "Hozircha rejalashtirilgan yo'nalishlar yo'q.", noHistory: "Tarix bo'sh. Statistikani ko'rish uchun sayohat qo'shing.",
+    formNewRoute: "Yangi yo'nalish", formNewTrip: "Yangi sayohat", formEdit: "Tahrirlash", from: "Qayerdan", to: "Qayerga", depDate: "Jo'nash sanasi", depTime: "Jo'nash vaqti",
+    arrDate: "Kelish sanasi", arrTime: "Kelish vaqti", arrHint: "Sayohat vaqtini hisoblash uchun kerak", trainNum: "Poyezd raqami", seat: "Vagon / o'rindiq",
+    km: "Temir yo'l masofasi, km", kmPlaceholder: "masalan 651", status: "Holat", notes: "Izohlar", notesPh: "Almashish, aloqa…", save: "Saqlash", delete: "O'chirish",
+    errRequired: "Jo'nash, borish va sanani ko'rsating.", planned: "Rejalashtirilgan", booked: "Chipta olingan", done: "Tugallangan", cancelled: "Bekor qilingan",
+    legend: "Qorong'i chiziqlar — haqiqiy temir yo'l tarmog'i", settings: "Sozlamalar", language: "Til", colorFuture: "Kelgusi yo'nalishlar rangi", colorHistory: "O'tgan sayohatlar rangi", close: "Yopish",
+    routes: ["yo'nalish","yo'nalish","yo'nalish"], trips: ["sayohat","sayohat","sayohat"], noRoutes: "Yo'nalishlar yo'q", noTrips: "Sayohatlar yo'q", tripsLabel: "sayohat", kmLabel: "km",
+    kmPartial: "km (bir qismi to'g'ri chiziq)", timeInTransit: "yo'lda vaqt", cities: "shaharlar", stationVisits: "Bekat tashriflari", topStations: "Eng ko'p bekatlar",
+    special: "Maxsus poyezd", retro: "Retro poyezd", brand: "Brendli", tour: "Turistik", night: "Tungi", luxury: "Hashamatli", other: "Boshqa",
+    specialStats: "Maxsus poyezdlar", specialCount: "Maxsus poyezdlar", specialNone: "Hozircha maxsus poyezdlar yo'q.", achievements: "Yutuqlar",
+    achFirst: "Birinchi sayohat", achTen: "10 sayohat", achFifty: "50 sayohat", achHundred: "100 sayohat", achKm1000: "Birinchi 1000 km", achKm10000: "10 000 km", achKm50000: "50 000 km",
+    achCities5: "5 shahar", achCities20: "20 shahar", achCities50: "50 shahar", achCountries3: "3 mamlakat", achCountries5: "5 mamlakat", achTranssib: "Transsib", achNight: "Tungi sayohat", achLongride: "Sutkalik yo'l",
+    achSpecial: "Maxsus poyezd", achAllstatuses: "Barcha holatlar", achCaucasus: "Kavkaz", achAsia: "O'rta Osiyo", achDone: "Olingan", achLocked: "Olinmagan", regular: "Oddiy", namedTrain: "Nomli poyezd", namedStats: "Nomli poyezdlar",
+    achNamedFirst: "Birinchi nomli poyezd", achNamedSection: "Nomli poyezdlar", achRegularSection: "Yutuqlar",
+  }
+
+};
+function t(key) {
+  return (I18N[lang] && I18N[lang][key]) || I18N.ru[key] || key;
+}
+function cityDisplayName(c) {
+  if (!c) return "";
+  return lang === "en" && c.nameEn ? c.nameEn : c.name;
+}
+function countryDisplayName(c) {
+  if (!c) return "";
+  return lang === "en" && c.countryEn ? c.countryEn : c.country;
+}
+
+function resolveCityName(stored) {
+  if (!stored) return "—";
+  const key = stored.toLowerCase().trim();
+  const c = CITY_MAP[key];
+  if (c) return cityDisplayName(c);
+  return stored; // fallback to whatever was typed
+}
+
+
+
+
+const STATUSES = [
+  { id: "planned", color: "#8B95A8" },
+  { id: "booked", color: "#D9A62E" },
+  { id: "done", color: "#3F7A5E" },
+  { id: "cancelled", color: "#B33A3A" },
+];
+function statusMeta(id){
+  const s = STATUSES.find(x=>x.id===id) || STATUSES[0];
+  return { ...s, label: t(s.id) };
+}
+
+const SPECIAL_TRAINS = [
+  {id:"retro",color:"#8B5E3C"},{id:"brand",color:"#1C2541"},
+  {id:"tour",color:"#3F7A5E"},{id:"night",color:"#2B6CB0"},
+  {id:"luxury",color:"#D9A62E"},{id:"other",color:"#6B46C1"},
+];
+function specialMeta(id) { const s = SPECIAL_TRAINS.find(x => x.id === id); return s ? { ...s, label: t(s.id) } : null; }
+
+function sumKm(history) { return history.reduce((sum,t)=>sum+(getDistance(t)?.km||0),0); }
+function uniqueCities(history) { const s=new Set(); history.forEach(t=>{if(t.from)s.add(cityIdentity(t.from));if(t.to)s.add(cityIdentity(t.to));}); return s; }
+function uniqueCountries(history) { const s=new Set(); history.forEach(t=>[t.from,t.to].forEach(n=>{const c=CITY_MAP[(n||"").toLowerCase()];if(c?.country)s.add(c.country);})); return s; }
+function isTranssib(history) { return history.some(t=>{const a=cityIdentity(t.from),b=cityIdentity(t.to); return (a==="москва"&&b==="владивосток")||(a==="владивосток"&&b==="москва")||((a==="москва"||b==="москва")&&["иркутск","чита","хабаровск"].includes(a=== "москва"?b:a));}); }
+const ACHIEVEMENTS = [
+  {id:"first",check:h=>h.length>=1},{id:"ten",check:h=>h.length>=10},{id:"fifty",check:h=>h.length>=50},{id:"hundred",check:h=>h.length>=100},
+  {id:"km1000",check:h=>sumKm(h)>=1000},{id:"km10000",check:h=>sumKm(h)>=10000},{id:"km50000",check:h=>sumKm(h)>=50000},
+  {id:"cities5",check:h=>uniqueCities(h).size>=5},{id:"cities20",check:h=>uniqueCities(h).size>=20},{id:"cities50",check:h=>uniqueCities(h).size>=50},
+  {id:"countries3",check:h=>uniqueCountries(h).size>=3},{id:"countries5",check:h=>uniqueCountries(h).size>=5},{id:"transsib",check:h=>isTranssib(h)},
+  {id:"night",check:h=>h.some(x=>{if(!x.time)return false;const m=Number(x.time.slice(0,2))*60+Number(x.time.slice(3,5));return m>=1320||m<360;})},
+  {id:"longride",check:h=>h.some(x=>(durationMinutes(x)||0)>=1440)},{id:"special",check:h=>h.some(x=>x.special)},
+  {id:"allstatuses",check:h=>STATUSES.every(s=>trips.some(x=>x.status===s.id))},
+  {id:"caucasus",check:h=>h.some(x=>[x.from,x.to].some(n=>["Армения","Азербайджан","Грузия"].includes(CITY_MAP[(n||"").toLowerCase()]?.country)))},
+  {id:"asia",check:h=>h.some(x=>[x.from,x.to].some(n=>["Казахстан","Узбекистан","Киргизия","Таджикистан","Китай"].includes(CITY_MAP[(n||"").toLowerCase()]?.country)))},
+];
+const ALL_NAMED = [...new Set(Object.values(NAMED_TRAINS).flat().map(x => x.id))];
+ACHIEVEMENTS.push({ id: "namedFirst", check: h => h.some(x => x.namedTrain) });
+ALL_NAMED.forEach(id => ACHIEVEMENTS.push({ id: "nt_"+id, check: h => h.some(x => x.namedTrain === id) }));
+function renderSpecialToggle(current) {
+  el("special-toggle").innerHTML = `<button type="button" class="toggle-btn ${!current?'active':''}" data-special="">—</button>` + SPECIAL_TRAINS.map(s=>`<button type="button" class="toggle-btn ${s.id===current?'active':''}" data-special="${s.id}">${t(s.id)}</button>`).join("");
+  document.querySelectorAll("[data-special]").forEach(b=>{b.onclick=()=>{document.querySelectorAll("[data-special]").forEach(x=>x.classList.remove("active"));b.classList.add("active");};});
+}
+function renderAchievements() {
+  const h=trips.filter(x=>x.status==="done"), list=el("achievements-list"); if(!list)return;
+  const regular = ACHIEVEMENTS.filter(a => !a.id.startsWith("nt_"));
+  const named = ACHIEVEMENTS.filter(a => a.id.startsWith("nt_"));
+  const renderGroup = (arr) => arr.map(a=>{
+    const ok=!!a.check(h), key="ach"+a.id.charAt(0).toUpperCase()+a.id.slice(1);
+    const named = a.id.startsWith("nt_") ? (Object.values(NAMED_TRAINS).flat().find(x=>x.id===a.id.slice(3))?.name || a.id.slice(3)) : null;
+    const label = named || t(key);
+    return `<div class="rank-row" style="padding:9px 0"><span class="rank-name">${ok?'🏆':'🔒'} ${label}</span><span class="rank-count">${t(ok?'achDone':'achLocked')}</span></div>`;
+  }).join("");
+  list.innerHTML = `<div class="field-label" style="margin:6px 0">${t("achRegularSection")}</div>` + renderGroup(regular) + `<div class="field-label" style="margin:18px 0 6px">${t("achNamedSection")}</div>` + renderGroup(named);
+}
+
+
+// Route colors (customizable)
+let colorFuture = localStorage.getItem("cis-color-future") || "#D9A62E";
+let colorHistory = localStorage.getItem("cis-color-history") || "#3F7A5E";
+const COLOR_PRESETS = [
+  { id: "amber", hex: "#D9A62E" },
+  { id: "green", hex: "#3F7A5E" },
+  { id: "navy", hex: "#1C2541" },
+  { id: "red", hex: "#B33A3A" },
+  { id: "blue", hex: "#2B6CB0" },
+  { id: "purple", hex: "#6B46C1" },
+  { id: "teal", hex: "#2C7A7B" },
+  { id: "orange", hex: "#C05621" },
+];
+
+let trips = [];
+let activeTab = "future";
+let editingId = null;
+let map, layerGroup;
+
+const el = id => document.getElementById(id);
+
+const RAIL_FACTOR = 1.25; // жд-путь обычно длиннее прямой — грубая поправка
+
+function haversine(a, b) {
+  const R = 6371;
+  const dLat = (b.lat - a.lat) * Math.PI/180;
+  const dLng = (b.lng - a.lng) * Math.PI/180;
+  const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1-s)));
+}
+
+// Расстояние: ручной км → настоящая сеть путей (если оба города покрыты) →
+// нарисованная схема магистралей → прямая с поправкой (крайний случай)
+
+function networkKey(name) {
+  const key = (name || "").toLowerCase().trim();
+  const stationToNode = {
+    "москва (ленинградский)": "москва-ленинградский",
+    "москва (ярославский)": "москва-ярославский",
+    "москва (казанский)": "москва-казанский",
+    "москва (курский)": "москва-курский",
+    "москва (белорусский)": "москва-белорусский",
+    "москва (киевский)": "москва",
+    "москва (павелецкий)": "москва",
+    "санкт-петербург (московский)": "санкт-петербург",
+    "санкт-петербург (финляндский)": "санкт-петербург",
+    "санкт-петербург (ладожский)": "санкт-петербург",
+    "санкт-петербург (витебский)": "санкт-петербург",
+    "moscow (leningradsky)": "москва-ленинградский",
+    "moscow (yaroslavsky)": "москва-ярославский",
+    "moscow (kazansky)": "москва-казанский",
+    "moscow (kursky)": "москва-курский",
+    "moscow (belorussky)": "москва-белорусский",
+    "saint petersburg (moskovsky)": "санкт-петербург",
+  };
+  if (stationToNode[key]) return stationToNode[key];
+  const c = CITY_MAP[key];
+  if (c && c.stationOf) return c.stationOf;
+  const m = key.match(/^(.+?)\s*\(/);
+  if (m) {
+    const base = m[1].trim();
+    if (typeof GRAPH_NODES !== "undefined" && GRAPH_NODES[base]) return base;
+    if (REAL_NET && REAL_NET.cityNode && REAL_NET.cityNode[base] !== undefined) return base;
+  }
+  return key;
+}
+
+function cityIdentity(name) {
+  if (!name) return "";
+  const key = name.toLowerCase().trim();
+  const c = CITY_MAP[key];
+  if (c && c.stationOf) return c.stationOf;
+  // "москва (ленинградский)" -> "москва"
+  const m = key.match(/^(.+?)\s*\(/);
+  if (m) return m[1].trim();
+  // aliases
+  if (key === "питер" || key === "спб" || key === "petersburg" || key === "st. petersburg" || key === "st petersburg")
+    return "санкт-петербург";
+  if (key === "мск" || key === "moscow") return "москва";
+    const free = {
+    "питер": "санкт-петербург",
+    "спб": "санкт-петербург",
+    "петербург": "санкт-петербург",
+    "st petersburg": "санкт-петербург",
+    "saint petersburg": "санкт-петербург",
+    "мск": "москва",
+    "moscow": "москва",
+  };
+  if (free[key]) return free[key];
+  return key;
+}
+
+function realNetworkKey(name) {
+  const k = networkKey(name);
+  if (k.indexOf("москва") === 0) return "москва";
+  if (k.indexOf("санкт-петербург") === 0 || k === "санкт-петербург") return "санкт-петербург";
+  return k;
+}
+
+function getDistance(t) {
+  if (t.kmOverride) return { km: t.kmOverride, estimated: false, method: "manual" };
+  const fromKey = realNetworkKey(t.from);
+  const toKey = realNetworkKey(t.to);
+  const real = realNetworkRoute(fromKey, toKey);
+  if (real) return { km: real.km, estimated: false, method: "real" };
+  const viaNetwork = railGraphDistance(fromKey, toKey);
+  if (viaNetwork !== null) return { km: viaNetwork, estimated: false, method: "network" };
+  const from = CITY_MAP[fromKey];
+  const to = CITY_MAP[toKey];
+  if (!from || !to) return null;
+  return { km: Math.round(haversine(from, to) * RAIL_FACTOR), estimated: true, method: "straight" };
+}
+
+function durationMinutes(t) {
+  if (!t.date || !t.time || !t.arrDate || !t.arrTime) return null;
+  const dep = new Date(`${t.date}T${t.time}`);
+  const arr = new Date(`${t.arrDate}T${t.arrTime}`);
+  const diff = (arr - dep) / 60000;
+  return diff > 0 ? diff : null;
+}
+
+function formatDuration(min) {
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  return `${h} ч ${m} мин`;
+}
+
+function formatDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" }).replace(".", "");
+}
+
+
+
+
+// ---- storage ----
+async function loadTrips() {
+  try {
+    if (window.storage && window.storage.get) {
+      const res = await window.storage.get("cis-trips");
+      if (res && res.value) trips = JSON.parse(res.value);
+    } else {
+      const raw = localStorage.getItem("cis-trips");
+      if (raw) trips = JSON.parse(raw);
+    }
+  } catch (e) { console.warn("loadTrips", e); }
+  render();
+}
+async function saveTrips() {
+  try {
+    const data = JSON.stringify(trips);
+    if (window.storage && window.storage.set) {
+      await window.storage.set("cis-trips", data);
+    } else {
+      localStorage.setItem("cis-trips", data);
+    }
+  } catch (e) { console.error("Storage error:", e); }
+}
+
+// ---- map ----
+const WAYPOINTS = {
+  // Moscow — SPb (Oktyabrskaya)
+  "химки": {lat:55.889, lng:37.430},
+  "солнечногорск": {lat:56.184, lng:36.984},
+  "клин": {lat:56.333, lng:36.730},
+  "редикино": {lat:56.650, lng:36.300},
+  "тверь-узел": {lat:56.858, lng:35.917},
+  "лихославль": {lat:57.122, lng:35.467},
+  "спирово": {lat:57.420, lng:34.980},
+  "вышний волочёк": {lat:57.585, lng:34.563},
+  "бологое": {lat:57.880, lng:34.092},
+  "угловка": {lat:58.220, lng:33.550},
+  "окуловка": {lat:58.381, lng:33.301},
+  "малая вишера": {lat:58.846, lng:32.225},
+  "чудово": {lat:59.125, lng:31.659},
+  "любань": {lat:59.349, lng:31.250},
+  "тосно": {lat:59.541, lng:30.878},
+  "колопино": {lat:59.738, lng:30.585},
+  // Moscow terminals
+  "москва-ленинградский": {lat:55.776, lng:37.655},
+  "москва-ярославский": {lat:55.777, lng:37.657},
+  "москва-казанский": {lat:55.774, lng:37.656},
+  "москва-курский": {lat:55.757, lng:37.660},
+  "москва-белорусский": {lat:55.776, lng:37.585},
+  "москва-киевский": {lat:55.743, lng:37.567},
+  "москва-павелецкий": {lat:55.730, lng:37.639},
+  // Moscow — Voronezh — Rostov — Sochi
+  "подольск": {lat:55.431, lng:37.545},
+  "чехов": {lat:55.150, lng:37.477},
+  "серпухов": {lat:54.916, lng:37.411},
+  "тула-узел": {lat:54.193, lng:37.617},
+  "щакино": {lat:54.000, lng:37.850},
+  "узловая": {lat:53.979, lng:38.171},
+  "волово": {lat:53.550, lng:38.000},
+  "ефремов": {lat:53.148, lng:38.118},
+  "елец": {lat:52.623, lng:38.502},
+  "задонск": {lat:52.390, lng:38.920},
+  "воронеж-1": {lat:51.672, lng:39.184},
+  "лиски": {lat:50.984, lng:39.499},
+  "евдаково": {lat:50.600, lng:39.550},
+  "россошь": {lat:50.198, lng:39.567},
+  "купянск-узел": {lat:49.700, lng:39.150},
+  "миллерово": {lat:48.922, lng:40.397},
+  "гланская": {lat:48.350, lng:40.200},
+  "каменоломни": {lat:47.669, lng:40.213},
+  "батайск": {lat:47.110, lng:39.750},
+  "тихорецк": {lat:45.855, lng:40.125},
+  "кавказская": {lat:45.450, lng:40.580},
+  "армавир": {lat:45.001, lng:41.123},
+  "белореченская": {lat:44.766, lng:39.867},
+  "горячий ключ": {lat:44.631, lng:39.130},
+  "туапсе": {lat:44.101, lng:39.083},
+  "лазаревская": {lat:43.908, lng:39.333},
+  "сочи-узел": {lat:43.586, lng:39.723},
+  // Caucasus
+  "минеральные воды-узел": {lat:44.210, lng:43.135},
+  "прохладный": {lat:43.758, lng:44.030},
+  // Crimea via bridge
+  "тимашевск": {lat:45.617, lng:38.933},
+  "крымск": {lat:44.929, lng:37.991},
+  "тамань": {lat:45.218, lng:36.720},
+  "крымский мост": {lat:45.240, lng:36.580},
+  "керчь": {lat:45.337, lng:36.468},
+  "владиславовка": {lat:45.180, lng:35.380},
+  "джанкой": {lat:45.709, lng:34.393},
+  "симферополь-узел": {lat:44.952, lng:34.105},
+  "бахчисарай": {lat:44.755, lng:33.862},
+  "севастополь-узел": {lat:44.592, lng:33.522},
+  "евпатория": {lat:45.190, lng:33.368},
+  "феодосия": {lat:45.032, lng:35.382},
+  "ялта-узловая": {lat:44.495, lng:34.166},
+  // Moscow — Nizhny — Transsib
+  "электрогорск": {lat:55.883, lng:38.781},
+  "орехово-зуево": {lat:55.807, lng:38.962},
+  "петушки": {lat:55.811, lng:39.463},
+  "владимир-узел": {lat:56.129, lng:40.407},
+  "ковров": {lat:56.360, lng:41.319},
+  "вязники": {lat:56.245, lng:42.156},
+  "гороховец": {lat:56.207, lng:42.693},
+  "дзержинск": {lat:56.238, lng:43.460},
+  "шарья": {lat:58.369, lng:45.518},
+  "свеча": {lat:58.280, lng:47.330},
+  "котлас": {lat:61.257, lng:46.650},
+  "балезино": {lat:57.978, lng:53.005},
+  "глазов": {lat:58.139, lng:52.658},
+  "пермь-2": {lat:58.005, lng:56.181},
+  "кунгур": {lat:57.430, lng:56.944},
+  "шаля": {lat:57.250, lng:58.733},
+  "бисерть": {lat:56.860, lng:59.050},
+  "тюмень-узел": {lat:57.152, lng:65.527},
+  "ялуторовск": {lat:56.655, lng:66.301},
+  "заводоуковск": {lat:56.505, lng:66.539},
+  "ишим": {lat:56.117, lng:69.480},
+  "называевск": {lat:55.570, lng:71.350},
+  "любинская": {lat:55.150, lng:72.700},
+  "барабинск": {lat:55.351, lng:78.342},
+  "чаны": {lat:55.300, lng:76.750},
+  "татарская": {lat:55.220, lng:75.970},
+  "карасук": {lat:53.733, lng:78.050},
+  "чулымская": {lat:55.233, lng:80.967},
+  "тайга": {lat:56.064, lng:85.623},
+  "анжеро-судженск": {lat:56.083, lng:86.033},
+  "мариинск": {lat:56.214, lng:87.747},
+  "боготол": {lat:56.207, lng:89.532},
+  "ачинск": {lat:56.269, lng:90.499},
+  "чернореченская": {lat:56.200, lng:91.500},
+  "иланский": {lat:56.238, lng:96.065},
+  "канск": {lat:56.204, lng:95.717},
+  "тайшет": {lat:55.942, lng:98.002},
+  "нижнеудинск": {lat:54.907, lng:99.031},
+  "тулун": {lat:54.561, lng:100.579},
+  "зима": {lat:53.920, lng:102.049},
+  "черемхово": {lat:53.150, lng:103.067},
+  "ангарск": {lat:52.545, lng:103.888},
+  "улан-удэ-узел": {lat:51.834, lng:107.584},
+  "петровский завод": {lat:51.283, lng:108.850},
+  "хилок": {lat:51.350, lng:110.450},
+  "могизон": {lat:51.700, lng:113.200},
+  "карымская": {lat:51.616, lng:114.350},
+  "чернышевск": {lat:52.533, lng:117.017},
+  "могоча": {lat:53.733, lng:119.767},
+  "ерон": {lat:53.650, lng:121.500},
+  "сковородино": {lat:53.983, lng:123.940},
+  "магдагачи": {lat:53.450, lng:125.800},
+  "шимановская": {lat:52.000, lng:127.667},
+  "белогорск": {lat:50.916, lng:128.467},
+  "завитая": {lat:50.117, lng:129.433},
+  "бурея": {lat:49.800, lng:129.900},
+  "биробиджан": {lat:48.783, lng:132.933},
+  "известиковая": {lat:48.700, lng:134.000},
+  "вяземская": {lat:47.533, lng:134.750},
+  "бикин": {lat:46.817, lng:134.250},
+  "дальнереченск": {lat:45.933, lng:133.733},
+  "лесозаводск": {lat:45.467, lng:133.417},
+  "уссурийск": {lat:43.803, lng:131.952},
+  // Moscow — Kazan
+  "муром": {lat:55.576, lng:42.051},
+  "навинки": {lat:55.500, lng:42.800},
+  "арзамас": {lat:55.395, lng:43.840},
+  "сергач": {lat:55.533, lng:45.467},
+  "канаш": {lat:55.507, lng:47.491},
+  "шумерля": {lat:55.500, lng:46.417},
+  // Moscow — Samara
+  "рязань": {lat:54.629, lng:39.736},
+  "рыбное": {lat:54.733, lng:39.517},
+  "мичуринск": {lat:52.898, lng:40.498},
+  "тамбов-узел": {lat:52.721, lng:41.452},
+  "ртищево": {lat:52.259, lng:43.784},
+  "сердобск": {lat:52.467, lng:44.217},
+  "кузнецк": {lat:53.116, lng:46.600},
+  // Moscow — Ufa
+  "бугульма": {lat:54.536, lng:52.789},
+  "абдулино": {lat:53.950, lng:53.650},
+  // Moscow — Minsk / Belarus
+  "можайск": {lat:55.507, lng:36.027},
+  "гагарин": {lat:55.553, lng:34.995},
+  "вязьма": {lat:55.210, lng:34.295},
+  "сафоново": {lat:55.120, lng:33.250},
+  "ярославль-бел": {lat:54.950, lng:32.800},
+  "смоленск-узел": {lat:54.782, lng:32.045},
+  "красное": {lat:54.560, lng:31.033},
+  "орша": {lat:54.508, lng:30.426},
+  "толочин": {lat:54.408, lng:29.700},
+  "борисов": {lat:54.222, lng:28.505},
+  "жодино": {lat:54.100, lng:28.333},
+  "минск-пасс": {lat:53.901, lng:27.559},
+  "барановичи": {lat:53.132, lng:26.014},
+  "береза": {lat:52.533, lng:24.979},
+  "ивацевичи": {lat:52.717, lng:25.333},
+  "орша-центр": {lat:54.508, lng:30.426},
+  "могилёв-узел": {lat:53.900, lng:30.333},
+  "жлобин": {lat:52.892, lng:30.038},
+  "калинковичи": {lat:52.132, lng:29.333},
+  "гомель-узел": {lat:52.435, lng:30.975},
+  "витебск-узел": {lat:55.190, lng:30.205},
+  "полоцк": {lat:55.487, lng:28.786},
+  "гродно-узел": {lat:53.669, lng:23.813},
+  "лида": {lat:53.883, lng:25.300},
+  "молодечно": {lat:54.318, lng:26.839},
+  // SPb — Murmansk
+  "лодейное поле": {lat:60.726, lng:33.552},
+  "свирь": {lat:60.983, lng:34.150},
+  "медвежья гора": {lat:62.914, lng:34.456},
+  "сегежа": {lat:63.742, lng:34.312},
+  "кемь": {lat:64.953, lng:34.568},
+  "лоухи": {lat:66.076, lng:33.049},
+  "кандалакша": {lat:67.152, lng:32.412},
+  "апатиты": {lat:67.568, lng:33.407},
+  // Moscow — Arkhangelsk
+  "ростов-ярославский": {lat:57.191, lng:39.413},
+  "данилов": {lat:58.186, lng:40.178},
+  "буй": {lat:58.481, lng:41.531},
+  "вологда-узел": {lat:59.224, lng:39.884},
+  "харовск": {lat:59.950, lng:40.200},
+  "коноша": {lat:60.973, lng:40.257},
+  "няндома": {lat:61.665, lng:40.205},
+  "плесецк": {lat:62.717, lng:40.300},
+  "обозерская": {lat:63.450, lng:40.300},
+  // Oryol / Kursk
+  "мордвес": {lat:54.450, lng:37.700},
+  "мценск": {lat:53.278, lng:36.575},
+  "поныри": {lat:52.317, lng:36.300},
+  "льгов": {lat:51.661, lng:35.262},
+  // D2 — Caucasus / Central Asia / Moldova / Volga / Ural
+  "георгиевск": {lat:44.1500, lng:43.4667},
+  "моздок": {lat:43.7406, lng:44.6803},
+  "гудериес": {lat:43.3519, lng:46.1039},
+  "хасавюрт": {lat:43.2509, lng:46.5877},
+  "избербаш": {lat:42.5650, lng:47.8711},
+  "дагестанские огни": {lat:42.1156, lng:48.1933},
+  "сумгаит-узел": {lat:40.5897, lng:49.6686},
+  "гянджа-узел": {lat:40.6828, lng:46.3606},
+  "беслан": {lat:43.1886, lng:44.5389},
+  "назрань": {lat:43.2257, lng:44.7732},
+  "степанцминда": {lat:42.6570, lng:44.6433},
+  "марнеули": {lat:41.4756, lng:44.8086},
+  "ванадзор": {lat:40.8128, lng:44.4883},
+  "самтредиа": {lat:42.1537, lng:42.3352},
+  "кунград": {lat:43.0775, lng:58.9000},
+  "джизак": {lat:40.1158, lng:67.8422},
+  "бекабад": {lat:40.2208, lng:69.2697},
+  "коканд": {lat:40.5286, lng:70.9425},
+  "луговое": {lat:42.9350, lng:72.7600},
+  "жамбыл-узел": {lat:42.9000, lng:71.3667},
+  "белцы-узел": {lat:47.7617, lng:27.9289},
+  "тирасполь-узел": {lat:46.8403, lng:29.6433},
+  "бендеры": {lat:46.8316, lng:29.4777},
+  // other
+  "петропавловск": {lat:54.866, lng:69.150},
+  "кокшетау": {lat:53.283, lng:69.383},
+  "петропавловск-кз": {lat:54.866, lng:69.150},
+  "кокшетау-кз": {lat:53.283, lng:69.383},
+  "астана-узел": {lat:51.169, lng:71.449},
+  "караганда-узел": {lat:49.805, lng:73.109},
+  "балхаш-узел": {lat:46.848, lng:74.995},
+  "алматы-1": {lat:43.273, lng:76.938},
+  "шу": {lat:43.600, lng:73.750},
+  "тараз-узел": {lat:42.900, lng:71.367},
+  "туркестан-узел": {lat:43.302, lng:68.252},
+  "кызылорда-узел": {lat:44.849, lng:65.482},
+  "арысь": {lat:42.433, lng:68.800},
+  "шымкент-узел": {lat:42.342, lng:69.590},
+  "актобе-узел": {lat:50.284, lng:57.166},
+  "кандыагаш": {lat:49.450, lng:57.400},
+  "атырау-узел": {lat:47.116, lng:51.883},
+  "макат": {lat:47.650, lng:53.300},
+  "бейнеу": {lat:45.183, lng:55.200},
+  "саяк": {lat:47.000, lng:74.900},
+  "жайрем": {lat:48.300, lng:70.200},
+  "жезказган-узел": {lat:47.783, lng:67.700},
+  "семей-узел": {lat:50.411, lng:80.228},
+  "шар": {lat:49.600, lng:81.000},
+  "усть-каменогорск-узел": {lat:49.948, lng:82.628},
+  "павлодар-узел": {lat:52.287, lng:76.967},
+  "экибастуз-узел": {lat:51.724, lng:75.322},
+  "ерментау": {lat:51.617, lng:73.100},
+  "астана-1": {lat:51.180, lng:71.446},
+  "костанай-узел": {lat:53.220, lng:63.635},
+  "рубановка": {lat:53.500, lng:66.000},
+  "талдыкорган-узел": {lat:45.018, lng:78.377},
+  "сарыозек": {lat:44.350, lng:77.950},
+
+};
+
+const EDGES = [
+  // === D3 — Caucasus ===
+  ["минеральные воды-узел","георгиевск"],["георгиевск","прохладный"],["прохладный","нальчик"],
+  ["нальчик","беслан"],["беслан","владикавказ"],["владикавказ","назрань"],["назрань","моздок"],
+  ["моздок","гудериес"],["гудериес","хасавюрт"],["хасавюрт","избербаш"],["избербаш","дагестанские огни"],["дагестанские огни","дербент"],
+  ["владикавказ","степанцминда"],["степанцминда","тбилиси"],["тбилиси","марнеули"],["марнеули","гюмри"],["гюмри","ереван"],
+  ["тбилиси","самтредиа"],["самтредиа","батум"],["марнеули","гянджа-узел"],["гянджа-узел","гянджа"],["гянджа-узел","сумгаит-узел"],["сумгаит-узел","сумгаит"],["сумгаит-узел","баку"],
+  // === D3 — Central Asia ===
+  ["ташкент","джизак"],["джизак","самарканд"],["самарканд","навои"],["навои","бухара"],["бухара","туркменабад"],
+  ["туркменабад","мары"],["мары","ашхабад"],["бухара","ургенч"],["ургенч","хива"],["ургенч","нукус"],["нукус","кунград"],
+  ["ташкент","бекабад"],["бекабад","худжанд"],["ташкент","коканд"],["коканд","фергана"],["фергана","андижан"],["андижан","ош"],
+  ["тараз-узел","луговое"],["луговое","жамбыл-узел"],["жамбыл-узел","бишкек"],["тараз-узел","шимкент-узел"],["шимкент-узел","ташкент"],
+  ["ташкент","душанбе"],["душанбе","худжанд"],
+  // === D3 — Moldova ===
+  ["кишинёв","белцы-узел"],["белцы-узел","белцы"],["кишинёв","тирасполь-узел"],["тирасполь-узел","тирасполь"],["тирасполь-узел","бендеры"],
+  // === D3 — Volga ===
+  ["москва-казанский","муром"],["муром","арзамас"],["арзамас","казань"],["москва-казанский","рязань"],["рязань","мичуринск"],
+  ["мичуринск","саратов"],["саратов","сызрань"],["сызрань","балаково"],["балаково","энгельс"],["энгельс","саратов"],
+  ["саратов","волгоград"],["волгоград","волжский"],["волгоград","камышин"],["камышин","балашов"],["балашов","урюпинск"],
+  ["ростов-на-дону","новочеркасск"],["новочеркасск","волгодонск"],["волгодонск","волгоград"],["ростов-на-дону","таганрог"],
+  // === D3 — Ural ===
+  ["москва","екатеринбург"],["екатеринбург","челябинск"],["челябинск","курган"],["челябинск","магнитогорск"],["магнитогорск","орск"],["стерлитамак","уфа"],
+  // === Moscow — SPb ===
+  ["москва","москва-ленинградский"],
+  ["москва-ленинградский","химки"],["химки","солнечногорск"],["солнечногорск","клин"],
+  ["клин","редикино"],["редикино","тверь"],["тверь","лихославль"],
+  ["лихославль","спирово"],["спирово","вышний волочёк"],
+  ["вышний волочёк","бологое"],["бологое","угловка"],["угловка","окуловка"],
+  ["окуловка","малая вишера"],["малая вишера","чудово"],
+  ["чудово","любань"],["любань","тосно"],["тосно","колопино"],
+  ["колопино","санкт-петербург"],
+  // === Moscow — Voronezh — Rostov — Sochi ===
+  ["москва","москва-курский"],
+  ["москва-курский","подольск"],["подольск","чехов"],["чехов","серпухов"],
+  ["серпухов","тула"],["тула","узловая"],["узловая","волово"],
+  ["волово","ефремов"],["ефремов","елец"],["елец","задонск"],
+  ["задонск","воронеж"],
+  ["воронеж","лиски"],["лиски","евдаково"],["евдаково","россошь"],
+  ["россошь","миллерово"],["миллерово","гланская"],["гланская","каменоломни"],
+  ["каменоломни","батайск"],["батайск","ростов-на-дону"],
+  ["ростов-на-дону","тихорецк"],["тихорецк","кавказская"],
+  ["кавказская","армавир"],["армавир","белореченская"],
+  ["белореченская","горячий ключ"],["горячий ключ","туапсе"],
+  ["туапсе","лазаревская"],["лазаревская","сочи"],
+  ["тихорецк","минеральные воды"],
+  ["минеральные воды","пятигорск"],["минеральные воды","кисловодск"],
+  ["минеральные воды","прохладный"],["прохладный","грозный"],
+  ["прохладный","махачкала"],
+  ["ростов-на-дону","ставрополь"],
+  // Oryol / Kursk / Belgorod
+  ["тула","мценск"],["мценск","орёл"],["орёл","поныри"],
+  ["поныри","курск"],["курск","льгов"],["льгов","белгород"],
+  // === Crimea via Crimean Bridge ===
+  ["краснодар","тимашевск"],["тимашевск","крымск"],["крымск","тамань"],
+  ["тамань","крымский мост"],["крымский мост","керчь"],
+  ["керчь","владиславовка"],["владиславовка","джанкой"],
+  ["джанкой","симферополь"],["симферополь","бахчисарай"],
+  ["бахчисарай","севастополь"],
+  ["джанкой","евпатория"],["владиславовка","феодосия"],
+  ["ростов-на-дону","краснодар"],
+  // === Moscow — Nizhny — Transsib ===
+  ["москва","москва-ярославский"],
+  ["москва-ярославский","электрогорск"],["электрогорск","орехово-зуево"],
+  ["орехово-зуево","петушки"],["петушки","владимир"],
+  ["владимир","ковров"],["ковров","вязники"],["вязники","гороховец"],
+  ["гороховец","дзержинск"],["дзержинск","нижний новгород"],
+  ["нижний новгород","шарья"],["шарья","свеча"],["свеча","киров"],
+  ["киров","глазов"],["глазов","балезино"],["балезино","пермь"],
+  ["пермь","кунгур"],["кунгур","шаля"],["шаля","бисерть"],
+  ["бисерть","екатеринбург"],
+  ["екатеринбург","тюмень"],["тюмень","ялуторовск"],
+  ["ялуторовск","заводоуковск"],["заводоуковск","ишим"],
+  ["ишим","называевск"],["называевск","любинская"],["любинская","омск"],
+  ["омск","татарская"],["татарская","чаны"],["чаны","барабинск"],
+  ["барабинск","чулымская"],["чулымская","новосибирск"],
+  ["новосибирск","тайга"],["тайга","анжеро-судженск"],
+  ["анжеро-судженск","мариинск"],["мариинск","боготол"],
+  ["боготол","ачинск"],["ачинск","чернореченская"],
+  ["чернореченская","красноярск"],["красноярск","канск"],
+  ["канск","иланский"],["иланский","тайшет"],
+  ["тайшет","нижнеудинск"],["нижнеудинск","тулун"],
+  ["тулун","зима"],["зима","черемхово"],["черемхово","ангарск"],
+  ["ангарск","иркутск"],
+  ["иркутск","улан-удэ"],["улан-удэ","петровский завод"],
+  ["петровский завод","хилок"],["хилок","могизон"],["могизон","чита"],
+  ["чита","карымская"],["карымская","чернышевск"],
+  ["чернышевск","могоча"],["могоча","ерон"],["ерон","сковородино"],
+  ["сковородино","магдагачи"],["магдагачи","шимановская"],
+  ["шимановская","белогорск"],["белогорск","завитая"],
+  ["завитая","бурея"],["бурея","биробиджан"],
+  ["биробиджан","известиковая"],["известиковая","хабаровск"],
+  ["хабаровск","вяземская"],["вяземская","бикин"],
+  ["бикин","дальнереченск"],["дальнереченск","лесозаводск"],
+  ["лесозаводск","уссурийск"],["уссурийск","владивосток"],
+  // branches
+  ["новосибирск","барнаул"],["тайга","томск"],["ачинск","абакан"],
+  ["белогорск","благовещенск"],
+  // === Moscow — Kazan ===
+  ["москва","москва-казанский"],
+  ["москва-казанский","муром"],["муром","навинки"],["навинки","арзамас"],
+  ["арзамас","сергач"],["сергач","шумерля"],["шумерля","канаш"],
+  ["канаш","казань"],["казань","ижевск"],
+  // === Moscow — Samara — Ufa — Chelyabinsk ===
+  ["москва-казанский","рязань"],["рязань","рыбное"],["рыбное","мичуринск"],
+  ["мичуринск","тамбов"],["тамбов","ртищево"],["ртищево","сердобск"],
+  ["сердобск","пенза"],["пенза","кузнецк"],["кузнецк","самара"],
+  ["самара","бугульма"],["бугульма","абдулино"],["абдулино","уфа"],
+  ["уфа","челябинск"],["челябинск","екатеринбург"],
+  ["самара","саратов"],["саратов","волгоград"],["волгоград","астрахань"],
+  // === Moscow — Belarus ===
+  ["москва","москва-белорусский"],
+  ["москва-белорусский","можайск"],["можайск","гагарин"],
+  ["гагарин","вязьма"],["вязьма","сафоново"],["сафоново","смоленск"],
+  ["смоленск","красное"],["красное","орша"],
+  ["орша","толочин"],["толочин","борисов"],["борисов","жодино"],
+  ["жодино","минск"],
+  ["минск","барановичи"],["барановичи","ивацевичи"],
+  ["ивацевичи","береза"],["береза","брест"],
+  ["минск","молодечно"],["молодечно","лида"],["лида","гродно"],
+  ["орша","витебск"],["витебск","полоцк"],
+  ["орша","могилёв"],["могилёв","жлобин"],["жлобин","гомель"],
+  ["жлобин","калинковичи"],
+  // === SPb — Murmansk ===
+  ["санкт-петербург","лодейное поле"],["лодейное поле","свирь"],
+  ["свирь","петрозаводск"],["петрозаводск","медвежья гора"],
+  ["медвежья гора","сегежа"],["сегежа","кемь"],
+  ["кемь","лоухи"],["лоухи","кандалакша"],
+  ["кандалакша","апатиты"],["апатиты","мурманск"],
+  // === Moscow — Arkhangelsk ===
+  ["москва-ярославский","ростов-ярославский"],
+  ["ростов-ярославский","ярославль"],["ярославль","данилов"],
+  ["данилов","буй"],["буй","вологда"],
+  ["вологда","харовск"],["харовск","коноша"],
+  ["коноша","няндома"],["няндома","плесецк"],
+  ["плесецк","обозерская"],["обозерская","архангельск"],
+  ["ярославль","кострома"],["ярославль","иваново"],
+  // === Other ===
+  ["воронеж","липецк"],["елец","липецк"],
+  ["казань","чебоксары"],["казань","ульяновск"],
+  ["тюмень","сургут"],["сургут","нижневартовск"],
+  ["омск","петропавловск"],["петропавловск","кокшетау"],["кокшетау","астана"],
+  ["новосибирск","караганда"],["астана","караганда"],
+  ["ташкент","самарканд"],["самарканд","бухара"],
+  ["алматы","бишкек"],
+  ["краснодар","анапа"],["краснодар","новороссийск"],
+  ["самара","тольятти"],["пенза","саранск"],
+  // === Kazakhstan ===
+  ["омск","петропавловск"],["петропавловск","кокшетау"],["кокшетау","астана"],
+  ["астана","ерментау"],["ерментау","караганда"],
+  ["караганда","балхаш"],["балхаш","алматы"],
+  ["астана","павлодар"],["павлодар","семей"],["семей","усть-каменогорск"],
+  ["караганда","экибастуз"],["экибастуз","павлодар"],
+  ["астана","костанай"],
+  ["алматы","шу"],["шу","тараз"],["тараз","туркестан"],
+  ["туркестан","кызылорда"],["туркестан","арысь"],["арысь","шымкент"],
+  ["шымкент","ташкент"],
+  ["актобе","кандыагаш"],["кандыагаш","макат"],["макат","атырау"],
+  ["атырау","бейнеу"],
+  ["караганда","жайрем"],["жайрем","жезказган"],
+  ["алматы","сарыозек"],["сарыозек","талдыкорган"],
+  ["новосибирск","караганда"],["астана","караганда"],
+
+];
+
+const GRAPH_NODES = {};
+CITIES.forEach(c => GRAPH_NODES[c.name.toLowerCase()] = { lat: c.lat, lng: c.lng });
+Object.entries(WAYPOINTS).forEach(([k,v]) => GRAPH_NODES[k] = v);
+
+// Ensure hub keys exist in graph even without CITIES entries
+[
+  ["москва",55.7617,37.6599],["санкт-петербург",59.9286,30.3622],
+  ["тверь",56.8587,35.9176],["нижний новгород",56.3269,44.0075],
+  ["воронеж",51.6720,39.1843],["казань",55.7961,49.1064],
+  ["самара",53.1950,50.1000],["волгоград",48.7080,44.5133],
+  ["ростов-на-дону",47.2357,39.7015],["краснодар",45.0355,38.9753],
+  ["сочи",43.5855,39.7231],["екатеринбург",56.8389,60.6057],
+  ["тюмень",57.1522,65.5272],["омск",54.9885,73.3242],
+  ["новосибирск",55.0302,82.9204],["красноярск",56.0153,92.8932],
+  ["иркутск",52.2869,104.3050],["улан-удэ",51.8339,107.5841],
+  ["чита",52.0339,113.4994],["хабаровск",48.4827,135.0838],
+  ["владивосток",43.1155,131.8855],["пермь",58.0105,56.2502],
+  ["киров",58.6035,49.6680],["челябинск",55.1644,61.4368],
+  ["уфа",54.7388,55.9721],["минск",53.9006,27.5590],
+  ["смоленск",54.7820,32.0450],["тула",54.1931,37.6173],
+  ["орёл",52.9703,36.0635],["курск",51.7304,36.1926],
+  ["белгород",50.5997,36.5983],["ярославль",57.6261,39.8845],
+  ["вологда",59.2239,39.8839],["архангельск",64.5401,40.5433],
+  ["мурманск",68.9585,33.0827],["петрозаводск",61.7849,34.3469],
+  ["барнаул",53.3468,83.7768],["томск",56.4846,84.9476],
+  ["абакан",53.7210,91.4424],["благовещенск",50.2905,127.5272],
+  ["минеральные воды",44.2103,43.1353],["пятигорск",44.0486,43.0594],
+  ["кисловодск",43.9053,42.7167],["тамбов",52.7213,41.4523],
+  ["пенза",53.1950,45.0183],["саратов",51.5331,46.0342],
+  ["астрахань",46.3497,48.0408],["владимир",56.1290,40.4066],
+  ["ижевск",56.8527,53.2115],["сургут",61.2540,73.3962],
+  ["нижневартовск",60.9397,76.5696],["чебоксары",56.1439,47.2489],
+  ["ульяновск",54.3142,48.4031],["саранск",54.1838,45.1749],
+  ["тольятти",53.5303,49.3461],["липецк",52.6088,39.5992],
+  ["кострома",57.7676,40.9269],["иваново",56.9972,40.9714],
+  ["ставрополь",45.0445,41.9690],["грозный",43.3180,45.6885],
+  ["махачкала",42.9849,47.5047],["анапа",44.8951,37.3162],
+  ["новороссийск",44.7239,37.7687],["астана",51.1694,71.4491],
+  ["караганда",49.8047,73.1094],["брест",52.0975,23.6879],
+  ["гомель",52.4345,30.9754],["витебск",55.1904,30.2049]
+].forEach(([k,lat,lng]) => {
+  if (!GRAPH_NODES[k]) GRAPH_NODES[k] = { lat, lng };
+});
+
+
+const ADJ = {};
+Object.keys(GRAPH_NODES).forEach(k => ADJ[k] = []);
+EDGES.forEach(([a,b]) => {
+  if (!GRAPH_NODES[a] || !GRAPH_NODES[b]) return;
+  const d = haversine(GRAPH_NODES[a], GRAPH_NODES[b]);
+  if (!ADJ[a]) ADJ[a] = [];
+  if (!ADJ[b]) ADJ[b] = [];
+  ADJ[a].push({to:b, d}); ADJ[b].push({to:a, d});
+});
+
+function railGraphPath(fromKey, toKey) {
+  if (!GRAPH_NODES[fromKey] || !GRAPH_NODES[toKey]) return null;
+  if (fromKey === toKey) return { km: 0, path: [fromKey] };
+  const dist = {}, prev = {};
+  Object.keys(GRAPH_NODES).forEach(k => dist[k] = Infinity);
+  dist[fromKey] = 0;
+  const visited = new Set();
+  while (visited.size < Object.keys(GRAPH_NODES).length) {
+    let u = null, best = Infinity;
+    for (const k in dist) if (!visited.has(k) && dist[k] < best) { best = dist[k]; u = k; }
+    if (u === null || u === toKey) break;
+    visited.add(u);
+    (ADJ[u] || []).forEach(({to, d}) => {
+      if (dist[u] + d < dist[to]) { dist[to] = dist[u] + d; prev[to] = u; }
+    });
+  }
+  if (dist[toKey] === Infinity) return null;
+  const path = [toKey];
+  let cur = toKey;
+  while (cur !== fromKey) {
+    cur = prev[cur];
+    if (cur === undefined) return null;
+    path.push(cur);
+  }
+  path.reverse();
+  return { km: Math.round(dist[toKey]), path };
+}
+
+
+const _pathCache = {};
+function railGraphPathCached(fromKey, toKey) {
+  const k = fromKey + "|" + toKey;
+  if (_pathCache[k]) return _pathCache[k];
+  const r = railGraphPath(fromKey, toKey);
+  _pathCache[k] = r;
+  return r;
+}
+
+function railGraphDistance(fromKey, toKey) {
+  const r = railGraphPath(fromKey, toKey);
+  return r ? r.km : null;
+}
+
+function drawTrunkLines() {
+  // Disabled: only show user-selected routes
+  return;
+}
+
+// Настоящая сеть путей (узлы + рёбра с реальной геометрией и длиной), извлечена
+// из данных OpenStreetMap заранее — маршрутизация и км считаются по ней для
+// направлений из Москвы (Петербург, Нижний Новгород, Воронеж), где она есть.
+let REAL_NET = null; // { nodes, edges: [[a,b,km,[[lat,lng],...]]], cityNode }
+let REAL_ADJ = null;
+
+function initRealNetwork() { REAL_NET = null; }
+
+// Единый слой со всей настоящей сетью (все рёбра одним мультилинией — быстро рисуется)
+function drawRealNetworkBackground() {
+  // Disabled: do not draw full network — only user routes
+  return;
+}
+
+function realNetworkRoute(fromKey, toKey) { return null; }
+
+function drawGraticule() {
+  const grat = L.layerGroup().addTo(map);
+  for (let lat = -80; lat <= 80; lat += 10) {
+    L.polyline([[lat,-180],[lat,180]], { color: "#AFA98F", weight: 1, opacity: 0.9 }).addTo(grat);
+  }
+  for (let lng = -180; lng <= 180; lng += 10) {
+    L.polyline([[-85,lng],[85,lng]], { color: "#AFA98F", weight: 1, opacity: 0.9 }).addTo(grat);
+  }
+}
+
+function initMap() {
+  map = L.map('map', {
+    scrollWheelZoom: true, zoomControl: false, attributionControl: false,
+    minZoom: 2, maxZoom: 12,
+    maxBounds: [[-85, -180], [85, 180]],
+    preferCanvas: true,
+  }).setView([50, 55], 3);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  // attribution hidden
+  // L.control.attribution hidden by user request
+
+  let usedVector = false;
+  try {
+    if (typeof L.maplibreGL === 'function' && typeof maplibregl !== 'undefined') {
+      const gl = L.maplibreGL({
+        style: 'https://tiles.openfreemap.org/styles/positron',
+        interactive: false,
+      }).addTo(map);
+      window._mlMap = gl.getMaplibreMap && gl.getMaplibreMap();
+      const mlMap = window._mlMap;
+      if (mlMap) {
+        mlMap.on('load', () => {
+          hideAdminLayers(mlMap);
+          setMapLanguage(lang);
+        });
+        usedVector = true;
+        // attribution removed
+      }
+    }
+  } catch (e) {
+    console.warn('MapLibre failed, falling back to OSM', e);
+  }
+
+  if (!usedVector) {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      subdomains: 'abc', maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+    // restore soft filter for OSM
+    const pane = document.querySelector('#map .leaflet-tile-pane');
+    if (pane) pane.style.filter = 'grayscale(0.5) saturate(0.4) contrast(0.75) brightness(1.08)';
+  }
+
+  drawTrunkLines();
+  initRealNetwork();
+  drawRealNetworkBackground();
+  layerGroup = L.layerGroup().addTo(map);
+  setTimeout(() => setMapLanguage(lang), 1500);
+}
+
+
+function drawMap(list, color) {
+  if (!layerGroup || !map) return;
+  _lastDrawKey = "";
+  layerGroup.clearLayers();
+  const bounds = [];
+  const seen = {};
+
+  list.forEach(t => {
+    const fromKey = networkKey(t.from);
+    const toKey = networkKey(t.to);
+    const from = CITY_MAP[(t.from || "").toLowerCase()] || CITY_MAP[fromKey] || CITY_MAP[cityIdentity(t.from)];
+    const to = CITY_MAP[(t.to || "").toLowerCase()] || CITY_MAP[toKey] || CITY_MAP[cityIdentity(t.to)];
+    if (!from || !to) return;
+
+    let coords = null;
+    const route = (typeof railGraphPathCached === "function" ? railGraphPathCached : railGraphPath)(fromKey, toKey);
+    if (route && route.path && route.path.length >= 2) {
+      coords = route.path.map(k => {
+        const n = GRAPH_NODES[k];
+        return n ? [n.lat, n.lng] : null;
+      }).filter(Boolean);
+    }
+    if (!coords || coords.length < 2) {
+      const fk2 = cityIdentity(t.from) || fromKey;
+      const tk2 = cityIdentity(t.to) || toKey;
+      const route2 = (typeof railGraphPathCached === "function" ? railGraphPathCached : railGraphPath)(fk2, tk2);
+      if (route2 && route2.path && route2.path.length >= 2) {
+        coords = route2.path.map(k => {
+          const n = GRAPH_NODES[k];
+          return n ? [n.lat, n.lng] : null;
+        }).filter(Boolean);
+      }
+    }
+    if (!coords || coords.length < 2) {
+      coords = [[from.lat, from.lng], [to.lat, to.lng]];
+    }
+    coords[0] = [from.lat, from.lng];
+    coords[coords.length - 1] = [to.lat, to.lng];
+
+    L.polyline(coords, {
+      color: color || "#3F7A5E",
+      weight: 4,
+      opacity: 0.92,
+      dashArray: (color === colorFuture) ? "7 6" : null,
+      lineJoin: "round",
+      lineCap: "round",
+      interactive: false,
+    }).addTo(layerGroup);
+
+    coords.forEach(c => bounds.push(c));
+    [from, to].forEach(c => {
+      if (c && !seen[c.name]) {
+        seen[c.name] = true;
+        L.circleMarker([c.lat, c.lng], {
+          radius: 6, color: "#1C2541", fillColor: "#1C2541", fillOpacity: 1, weight: 1
+        }).bindPopup("<b>" + cityDisplayName(c) + "</b>").addTo(layerGroup);
+        bounds.push([c.lat, c.lng]);
+      }
+    });
+  });
+
+  if (bounds.length) {
+    try { map.fitBounds(bounds, { padding: [50, 50], maxZoom: 7, animate: false }); } catch (e) {}
+  }
+}
+
+// ---- rendering ----
+
+// ---- render optimization ----
+let _renderScheduled = null;
+let _lastRenderKey = "";
+function scheduleRender() {
+  if (_renderScheduled) return;
+  _renderScheduled = requestAnimationFrame(() => {
+    _renderScheduled = null;
+    renderNow();
+  });
+}
+
+function render() { scheduleRender(); }
+function renderNow() {
+  const future = trips.filter(t => t.status === "planned" || t.status === "booked" || t.status === "cancelled")
+    .sort((a,b)=>`${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+  const history = trips.filter(t => t.status === "done")
+    .sort((a,b)=>`${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`));
+
+  if (activeTab === "future") {
+    drawMap(future.filter(t=>t.status!=="cancelled"), colorFuture);
+    el("future-count").textContent = future.length === 0 ? t("noRoutes") : `${future.length} ${pluralRoute(future.length)}`;
+    el("future-empty").style.display = future.length ? "none" : "flex";
+    el("future-board").style.display = future.length ? "block" : "none";
+    el("future-rows").innerHTML = future.map(t => futureRowHtml(t)).join("");
+  } else {
+    drawMap(history, colorHistory);
+    renderStats(history);
+    el("history-count").textContent = history.length === 0 ? t("noTrips") : `${history.length} ${pluralTrip(history.length)}`;
+    el("history-empty").style.display = history.length ? "none" : "flex";
+    el("history-board").style.display = history.length ? "block" : "none";
+    el("history-rows").innerHTML = history.map(t => historyRowHtml(t)).join("");
+  }
+  bindRowEvents();
+  updatePeek();
+}
+
+function countStationVisits(history) {
+  const visits = {};
+  history.forEach(t => {
+    if (t.from) { const key = cityIdentity(t.from); visits[key] = (visits[key] || 0) + 1; }
+    if (t.to)   { const key = cityIdentity(t.to);   visits[key] = (visits[key] || 0) + 1; }
+  });
+  return visits;
+}
+function totalVisits(visits) { return Object.values(visits).reduce((s, c) => s + c, 0); }
+function topStations(visits, limit) { return Object.entries(visits).sort((a, b) => b[1] - a[1]).slice(0, limit); }
+
+function renderStats(history) {
+  let km = 0, minutes = 0, minutesKnown = 0, anyEstimated = false, anyKm = false, anyStraight = false;
+  const cities = new Set();
+  history.forEach(t => {
+    const dist = getDistance(t);
+    if (dist) {
+      km += dist.km; anyKm = true;
+      if (dist.estimated) anyEstimated = true;
+      if (dist.method === "straight") anyStraight = true;
+    }
+    if (t.from) cities.add(cityIdentity(t.from));
+    if (t.to) cities.add(cityIdentity(t.to));
+    const d = durationMinutes(t);
+    if (d) { minutes += d; minutesKnown++; }
+  });
+  const visits = countStationVisits(history);
+  const visitTotal = totalVisits(visits);
+  const top = topStations(visits, 10);
+  const kmLabel = anyStraight ? t("kmPartial") : t("kmLabel");
+  const timeStr = minutesKnown
+    ? (Math.floor(minutes / 60) + " " + (lang === "en" ? "h" : "ч") + " " + (minutes % 60) + " " + (lang === "en" ? "min" : "мин"))
+    : "—";
+  const topHtml = top.length
+    ? `<div class="station-rank" style="margin-top:12px">
+        <div class="field-label" style="margin-bottom:6px">${t("topStations")}</div>
+        ${top.map(([name, n]) => {
+          const label = resolveCityName(name);
+          return `<div class="rank-row"><span class="rank-name">${label}</span><span class="rank-count mono">${n}</span></div>`;
+        }).join("")}
+      </div>`
+    : "";
+  const specialCounts = {};
+  history.forEach(x => { if (x.special) specialCounts[x.special] = (specialCounts[x.special] || 0) + 1; });
+  const specialHtml = `<div class="station-rank" style="margin-top:12px"><div class="field-label" style="margin-bottom:6px">${t("specialStats")}</div>` +
+    (Object.keys(specialCounts).length ? Object.entries(specialCounts).sort((a,b)=>b[1]-a[1]).map(([id,n]) => { const sm=specialMeta(id); return `<div class="rank-row"><span class="rank-name"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${sm?.color||"#6B46C1"};margin-right:7px"></span>${sm?.label||id}</span><span class="rank-count mono">${n}</span></div>`; }).join("") : `<div class="rank-row"><span class="rank-name">${t("specialNone")}</span></div>`) + `</div>`;
+  const namedCounts = {};
+  history.forEach(x => { if (x.namedTrain) namedCounts[x.namedTrain] = (namedCounts[x.namedTrain] || 0) + 1; });
+  const namedHtml = `<div class="station-rank" style="margin-top:12px"><div class="field-label" style="margin-bottom:6px">${t("namedStats")}</div>` +
+    (Object.keys(namedCounts).length ? Object.entries(namedCounts).sort((a,b)=>b[1]-a[1]).map(([id,n]) => { const all=Object.values(NAMED_TRAINS).flat(); const tr=all.find(x=>x.id===id); return `<div class="rank-row"><span class="rank-name">★ ${tr?.name||id}</span><span class="rank-count mono">${n}</span></div>`; }).join("") : `<div class="rank-row"><span class="rank-name">—</span></div>`) + `</div>`;
+  el("stats-row").innerHTML = `
+    <div class="stat-cell"><div class="stat-num mono">${history.length}</div><div class="stat-label">${t("tripsLabel")}</div></div>
+    <div class="stat-cell"><div class="stat-num mono">${anyKm ? km.toLocaleString(lang === "en" ? "en-US" : "ru-RU") : "—"}</div><div class="stat-label">${kmLabel}</div></div>
+    <div class="stat-cell"><div class="stat-num mono">${timeStr}</div><div class="stat-label">${t("timeInTransit")}</div></div>
+    <div class="stat-cell"><div class="stat-num mono">${cities.size}</div><div class="stat-label">${t("cities")}</div></div>
+    <div class="stat-cell"><div class="stat-num mono">${visitTotal}</div><div class="stat-label">${t("stationVisits")}</div></div>
+  ` + topHtml + specialHtml + namedHtml;
+}
+
+function futureRowHtml(t) {
+  const st = statusMeta(t.status);
+  return `
+    <div class="row">
+      <span class="col-actions"><button class="icon-btn" data-del="${t.id}">✕</button></span>
+      <span class="col col-date mono">${formatDate(t.date)}${t.time ? " · " + t.time : ""}</span>
+      <span class="col col-route" data-edit="${t.id}">
+        <span class="route-text">${resolveCityName(t.from)} <span style="color:#8B95A8">→</span> ${resolveCityName(t.to)}</span>
+        ${t.trainNumber ? `<span class="route-meta mono">${t.trainNumber}</span>` : ""}
+        ${t.namedTrain ? ` · ★ ${(getNamedTrains(t.from, t.to).find(x=>x.id===t.namedTrain)||{}).name || t.namedTrain}` : ""}
+        ${t.special ? (()=>{const sm=specialMeta(t.special); return sm ? `<span class="route-meta"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sm.color};margin-right:5px"></span>${sm.label}</span>` : "";})() : ""}
+      </span>
+      <span class="col col-status"><span class="status-pill" style="color:${st.color};border-color:${st.color}">${st.label}</span></span>
+    </div>`;
+}
+
+function historyRowHtml(t) {
+  const dist = getDistance(t);
+  const d = durationMinutes(t);
+  return `
+    <div class="row">
+      <span class="col-actions"><button class="icon-btn" data-del="${t.id}">✕</button></span>
+      <span class="col col-date mono">${formatDate(t.date)}</span>
+      <span class="col col-route" data-edit="${t.id}">
+        <span class="route-text">${resolveCityName(t.from)} <span style="color:#8B95A8">→</span> ${resolveCityName(t.to)}</span>
+        ${t.special ? (()=>{const sm=specialMeta(t.special); return sm ? `<span class="route-meta"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sm.color};margin-right:5px"></span>${sm.label}</span>` : "";})() : ""}
+      </span>
+      <span class="col col-train mono">${t.trainNumber || "—"}${t.namedTrain ? ` · ★ ${(getNamedTrains(t.from, t.to).find(x=>x.id===t.namedTrain)||{}).name || t.namedTrain}` : ""}${d ? " · " + formatDuration(d) : ""}${dist ? " · " + (dist.method === "straight" ? "~" : "") + dist.km.toLocaleString("ru-RU") + " км" : ""}</span>
+    </div>`;
+}
+
+function bindRowEvents() {
+  document.querySelectorAll("[data-edit]").forEach(elm => {
+    elm.onclick = () => openForm(trips.find(t => t.id === elm.dataset.edit));
+  });
+  document.querySelectorAll("[data-del]").forEach(elm => {
+    elm.onclick = () => { trips = trips.filter(t => t.id !== elm.dataset.del); saveTrips(); render(); };
+  });
+}
+
+// ---- form ----
+function renderStatusToggle(current) {
+  el("status-toggle").innerHTML = STATUSES.map(s => `
+    <button type="button" class="toggle-btn ${s.id===current?'active':''}" data-status="${s.id}">${t(s.id)}</button>
+  `).join("");
+  document.querySelectorAll("[data-status]").forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll("[data-status]").forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+    };
+  });
+}
+
+function renderNamedTrainToggle(from, to, current) {
+  const row = el("named-train-row"), box = el("named-train-toggle");
+  if (!row || !box) return;
+  const trains = getNamedTrains(from, to);
+  if (!trains.length) { row.style.display = "none"; box.innerHTML = ""; return; }
+  row.style.display = "block";
+  box.innerHTML = `<button type="button" class="toggle-btn ${!current?'active':''}" data-named="">${t("regular")}</button>` +
+    trains.map(tr => `<button type="button" class="toggle-btn ${tr.id===current?'active':''}" data-named="${tr.id}">${tr.name}</button>`).join("");
+  box.querySelectorAll("[data-named]").forEach(b => {
+    b.onclick = () => { box.querySelectorAll("[data-named]").forEach(x => x.classList.remove("active")); b.classList.add("active"); };
+  });
+}
+
+function openForm(trip) {
+  editingId = trip ? trip.id : null;
+  el("form-title").textContent = trip ? t("formEdit") : (activeTab === "future" ? t("formNewRoute") : t("formNewTrip"));
+  el("f-from").value = trip ? resolveCityName(trip.from) : "";
+  el("f-to").value = trip ? resolveCityName(trip.to) : "";
+  el("f-date").value = trip?.date || "";
+  el("f-time").value = trip?.time || "";
+  el("f-arr-date").value = trip?.arrDate || "";
+  el("f-arr-time").value = trip?.arrTime || "";
+    el("f-train").value = trip?.trainNumber || "";
+  el("f-seat").value = trip?.seat || "";
+  el("f-notes").value = trip?.notes || "";
+  el("form-error").style.display = "none";
+  el("delete-btn").style.display = trip ? "block" : "none";
+  const today = new Date().toISOString().split("T")[0];
+  const maxFuture = getMaxFutureDate();
+  ["f-date", "f-arr-date"].forEach(id => {
+    const inp = el(id); if (!inp) return;
+    if (activeTab === "future") { inp.min = today; inp.max = maxFuture; }
+    else { inp.min = FIRST_RAILWAY_IN_WORLD; inp.max = today; }
+  });
+  renderStatusToggle(trip?.status || (activeTab === "future" ? "planned" : "done"));
+  renderSpecialToggle(trip?.special || "");
+  setTimeout(() => {
+    const fromVal = normalizeCity(el("f-from").value);
+    const toVal = normalizeCity(el("f-to").value);
+    renderNamedTrainToggle(fromVal, toVal, trip?.namedTrain || "");
+  }, 50);
+  el("overlay").classList.add("open");
+}
+
+function closeForm() { el("overlay").classList.remove("open"); }
+
+el("close-form").onclick = closeForm;
+el("overlay").onclick = (e) => { if (e.target.id === "overlay") closeForm(); };
+el("delete-btn").onclick = () => {
+  if (editingId) { trips = trips.filter(t => t.id !== editingId); saveTrips(); render(); }
+  closeForm();
+};
+
+el("trip-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const from = normalizeCity(el("f-from").value);
+  const to = normalizeCity(el("f-to").value);
+  const date = el("f-date").value;
+  const fromKeyChk = realNetworkKey(from);
+  const toKeyChk = realNetworkKey(to);
+  if (fromKeyChk !== toKeyChk && !railGraphDistance(fromKeyChk, toKeyChk)) {
+    el("form-error").textContent = "Такого маршрута нет в схеме путей. Выберите существующие станции.";
+    el("form-error").style.display = "block";
+    return;
+  }
+  if (!from || !to || !date) {
+    el("form-error").textContent = t("errRequired");
+    el("form-error").style.display = "block";
+    return;
+  }
+  const todayChk = new Date().toISOString().split("T")[0];
+  const maxFutureChk = getMaxFutureDate();
+  if (date < FIRST_RAILWAY_IN_WORLD) { el("form-error").textContent = "Железных дорог ещё не существовало. Выберите дату после 27 сентября 1825 года."; el("form-error").style.display = "block"; return; }
+  if (activeTab === "future" && date < todayChk) { el("form-error").textContent = "Для будущего маршрута нельзя выбрать прошедшую дату."; el("form-error").style.display = "block"; return; }
+  if (activeTab === "future" && date > maxFutureChk) { el("form-error").textContent = "Будущий маршрут можно планировать не более чем на год вперёд."; el("form-error").style.display = "block"; return; }
+  if (activeTab === "history" && date > todayChk) { el("form-error").textContent = "Для истории нельзя выбрать будущую дату."; el("form-error").style.display = "block"; return; }
+  const status = document.querySelector("[data-status].active")?.dataset.status || "planned";
+  const trip = {
+    id: editingId || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+    from, to, date,
+    time: el("f-time").value,
+    arrDate: el("f-arr-date").value,
+    arrTime: el("f-arr-time").value,
+        trainNumber: el("f-train").value.trim(),
+    seat: el("f-seat").value.trim(),
+    status,
+    special: document.querySelector("[data-special].active")?.dataset.special || "",
+    notes: el("f-notes").value.trim(),
+  };
+  if (editingId) trips = trips.map(t => t.id === editingId ? trip : t);
+  else trips.push(trip);
+  try { await saveTrips(); } catch(e) { console.error(e); }
+  // also force localStorage
+  try { localStorage.setItem("cis-trips", JSON.stringify(trips)); } catch(e) {}
+  closeForm();
+  render();
+  if (typeof setSheet === "function") setSheet(false);
+};
+
+el("add-future-btn").onclick = () => openForm(null);
+el("add-history-btn").onclick = () => openForm(null);
+
+// ---- tabs ----
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    activeTab = tab.dataset.tab;
+    el("page-future").style.display = activeTab === "future" ? "block" : "none";
+    el("page-history").style.display = activeTab === "history" ? "block" : "none";
+    setTimeout(() => { map.invalidateSize(); render(); }, 50);
+  };
+});
+
+
+// ---- language & settings ----
+function applyLanguage() {
+  document.documentElement.lang = lang;
+  if (typeof setMapLanguage === 'function') setMapLanguage(lang);
+  if (typeof renderColorToggles === 'function') renderColorToggles();
+  const cfl = el('color-future-label'); if (cfl) cfl.textContent = t('colorFuture');
+  const chl = el('color-history-label'); if (chl) chl.textContent = t('colorHistory');
+  const set = (id, key) => { const e = el(id); if (e) e.textContent = t(key); };
+  set("brand-text", "brand");
+  set("tab-future", "tabFuture");
+  set("tab-history", "tabHistory");
+  set("add-future-btn", "addRoute");
+  set("add-history-btn", "addTrip");
+  set("future-empty", "noFuture");
+  set("history-empty", "noHistory");
+  set("settings-title", "settings");
+  set("achievements-title", "achievements");
+  set("lbl-special", "special");
+  if (typeof renderAchievements === "function") renderAchievements();
+  set("lang-label", "language");
+  set("lbl-from", "from");
+  set("lbl-to", "to");
+  set("lbl-named-train", "namedTrain");
+  set("lbl-dep-date", "depDate");
+  set("lbl-dep-time", "depTime");
+  set("lbl-arr-date", "arrDate");
+  set("lbl-arr-time", "arrTime");
+  set("arr-hint", "arrHint");
+  set("lbl-train", "trainNum");
+  set("lbl-seat", "seat");
+    set("lbl-status", "status");
+  set("lbl-notes", "notes");
+  set("save-btn", "save");
+  set("delete-btn", "delete");
+    const notesPh = el("f-notes"); if (notesPh) notesPh.placeholder = t("notesPh");
+  // lang toggle active state
+  document.querySelectorAll("[data-lang]").forEach(b => {
+    b.classList.toggle("active", b.dataset.lang === lang);
+  });
+  // re-render form status if open
+  if (el("overlay").classList.contains("open")) {
+    const cur = document.querySelector("[data-status].active")?.dataset.status || "planned";
+    renderStatusToggle(cur);
+    const sp = document.querySelector("[data-special].active")?.dataset.special || "";
+    renderSpecialToggle(sp);
+    const nt = document.querySelector("[data-named].active")?.dataset.named || "";
+    renderNamedTrainToggle(normalizeCity(el("f-from").value), normalizeCity(el("f-to").value), nt);
+  }
+  /* city list via autocomplete */
+  render(); // refresh lists with new labels
+}
+
+function pluralRoute(n) {
+  const forms = t("routes");
+  if (lang === "en") return n === 1 ? forms[0] : forms[1];
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return forms[0];
+  if ([2,3,4].includes(m10) && ![12,13,14].includes(m100)) return forms[1];
+  return forms[2];
+}
+function pluralTrip(n) {
+  const forms = t("trips");
+  if (lang === "en") return n === 1 ? forms[0] : forms[1];
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return forms[0];
+  if ([2,3,4].includes(m10) && ![12,13,14].includes(m100)) return forms[1];
+  return forms[2];
+}
+
+
+
+
+function hideAdminLayers(mlMap) {
+  try {
+    const style = mlMap.getStyle();
+    if (!style || !style.layers) return;
+    style.layers.forEach(layer => {
+      const id = (layer.id || '').toLowerCase();
+      const src = (layer['source-layer'] || '').toLowerCase();
+      if (
+        id.includes('boundary') || id.includes('admin') || id.includes('border') ||
+        id.includes('country') || id.includes('state') || id.includes('continent') ||
+        id.includes('place_country') || id.includes('place_state') ||
+        src.includes('boundary') || src === 'admin'
+      ) {
+        try { mlMap.setLayoutProperty(layer.id, 'visibility', 'none'); } catch(e) {}
+      }
+    });
+  } catch(e) {}
+}
+
+function setMapLanguage(code) {
+  const mlMap = window._mlMap;
+  if (!mlMap) return;
+  let langCode = "ru";
+  if (code === "en") langCode = "en";
+  if (code === "zh") langCode = "en";
+  if (code === "uz") langCode = "ru";
+  try {
+    const style = mlMap.getStyle();
+    if (!style || !style.layers) return;
+    style.layers.forEach(layer => {
+      if (layer.type !== "symbol") return;
+      const id = (layer.id || "").toLowerCase();
+      if (id.includes("country") || id.includes("state") || id.includes("continent") || id.includes("boundary")) return;
+      try {
+        mlMap.setLayoutProperty(layer.id, "text-field", [
+          "coalesce",
+          ["get", "name:" + langCode], ["get", "name_" + langCode],
+          ["get", "name"], ["get", "name:en"], ["get", "name_en"]
+        ]);
+      } catch(e) {}
+    });
+    if (mlMap.triggerRepaint) mlMap.triggerRepaint();
+  } catch(e) { console.warn("setMapLanguage", e); }
+}
+
+
+function renderColorToggles() {
+  const mk = (containerId, current, onPick) => {
+    const elc = el(containerId);
+    if (!elc) return;
+    elc.innerHTML = COLOR_PRESETS.map(p => `
+      <button type="button" class="toggle-btn ${p.hex===current?'active':''}" data-hex="${p.hex}"
+        style="width:32px;height:32px;padding:0;border-radius:4px;background:${p.hex};border:2px solid ${p.hex===current?'var(--navy)':'var(--line)'};"></button>
+    `).join("");
+    elc.querySelectorAll("[data-hex]").forEach(b => {
+      b.onclick = () => onPick(b.dataset.hex);
+    });
+  };
+  mk("color-future-toggle", colorFuture, (hex) => {
+    colorFuture = hex;
+    localStorage.setItem("cis-color-future", hex);
+    _lastDrawKey = "";
+    renderColorToggles();
+    render();
+  });
+  mk("color-history-toggle", colorHistory, (hex) => {
+    colorHistory = hex;
+    localStorage.setItem("cis-color-history", hex);
+    _lastDrawKey = "";
+    renderColorToggles();
+    render();
+  });
+}
+
+// ---- bottom sheet (mobile) ----
+let sheetExpanded = false;
+function isMobile() { return window.innerWidth <= 760; }
+
+function setSheet(expanded) {
+  const panel = el("side-panel");
+  if (!panel) return;
+  sheetExpanded = expanded;
+  if (!isMobile()) {
+    panel.classList.remove("sheet-peek", "sheet-full");
+    return;
+  }
+  panel.classList.toggle("sheet-peek", !expanded);
+  panel.classList.toggle("sheet-full", expanded);
+  setTimeout(() => { if (map) map.invalidateSize(); }, 300);
+}
+
+function updatePeek() {
+  const future = trips.filter(t => t.status === "planned" || t.status === "booked")
+    .sort((a,b) => `${a.date}${a.time||""}`.localeCompare(`${b.date}${b.time||""}`));
+  const hist = trips.filter(t => t.status === "done");
+
+  // Future peek
+  const pf = el("peek-future-text");
+  const pm = el("peek-future-meta");
+  if (pf) {
+    if (future.length === 0) {
+      pf.textContent = lang === "en" ? "You have no routes" : "У вас нет маршрутов";
+      if (pm) pm.textContent = "";
+    } else {
+      const t0 = future[0];
+      pf.textContent = `${resolveCityName(t0.from)} → ${resolveCityName(t0.to)}`;
+      if (pm) {
+        const st = statusMeta(t0.status);
+        pm.textContent = `${formatDate(t0.date)}${t0.time ? " · " + t0.time : ""} · ${st.label}`;
+      }
+    }
+  }
+
+  // History peek: km + cities
+  let km = 0, anyKm = false;
+  const cities = new Set();
+  hist.forEach(t => {
+    const dist = getDistance(t);
+    if (dist) { km += dist.km; anyKm = true; }
+    if (t.from) cities.add(cityIdentity(t.from));
+    if (t.to) cities.add(cityIdentity(t.to));
+  });
+  const pk = el("peek-km");
+  const pc = el("peek-cities");
+  if (pk) pk.textContent = anyKm ? km.toLocaleString(lang === "en" ? "en-US" : "ru-RU") : "—";
+  if (pc) pc.textContent = String(cities.size);
+  const pkl = el("peek-km-label");
+  const pcl = el("peek-cities-label");
+  if (pkl) pkl.textContent = t("kmLabel");
+  if (pcl) pcl.textContent = t("cities");
+}
+
+// Swipe handling
+(function initSheetGestures() {
+  const panel = () => el("side-panel");
+  let startY = 0, currentY = 0, dragging = false;
+
+  function onStart(e) {
+    if (!isMobile()) return;
+    const touch = e.touches ? e.touches[0] : e;
+    startY = touch.clientY;
+    currentY = startY;
+    dragging = true;
+  }
+  function onMove(e) {
+    if (!dragging) return;
+    const touch = e.touches ? e.touches[0] : e;
+    currentY = touch.clientY;
+  }
+  function onEnd() {
+    if (!dragging) return;
+    dragging = false;
+    const dy = currentY - startY;
+    if (dy < -40) setSheet(true);   // swipe up → expand
+    else if (dy > 40) setSheet(false);
+if (typeof renderColorToggles === 'function') renderColorToggles(); // swipe down → peek
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const p = panel();
+    if (!p) return;
+    p.addEventListener("touchstart", onStart, { passive: true });
+    p.addEventListener("touchmove", onMove, { passive: true });
+    p.addEventListener("touchend", onEnd);
+    const handle = el("sheet-handle");
+    if (handle) {
+      handle.addEventListener("click", () => setSheet(!sheetExpanded));
+    }
+  });
+  // also bind immediately if already loaded
+  setTimeout(() => {
+    const p = panel();
+    if (!p) return;
+    p.addEventListener("touchstart", onStart, { passive: true });
+    p.addEventListener("touchmove", onMove, { passive: true });
+    p.addEventListener("touchend", onEnd);
+    const handle = el("sheet-handle");
+    if (handle) handle.addEventListener("click", () => setSheet(!sheetExpanded));
+  }, 100);
+})();
+
+
+
+// ---- autocomplete ----
+function cityLabel(c) {
+  return lang === "en" && c.nameEn ? c.nameEn : c.name;
+}
+function filterCities(query) {
+  const q = (query || "").trim().toLowerCase();
+  if (!q) return [];
+  return CITIES.filter(c => {
+    const n = (c.name || "").toLowerCase();
+    const en = (c.nameEn || "").toLowerCase();
+    return n.includes(q) || en.includes(q) || n.replace(/[()]/g, " ").includes(q);
+  }).slice(0, 12);
+}
+function bindAutocomplete(inputId, listId) {
+  const input = el(inputId);
+  const list = el(listId);
+  if (!input || !list) return;
+  let activeIdx = -1;
+
+  function close() {
+    list.classList.remove("open");
+    list.innerHTML = "";
+    activeIdx = -1;
+  }
+  function open(items) {
+    if (!items.length) { close(); return; }
+    list.innerHTML = items.map((c, i) =>
+      `<div class="ac-item" data-i="${i}" data-val="${c.name.replace(/"/g, "&quot;")}">${cityLabel(c)}</div>`
+    ).join("");
+    list.classList.add("open");
+    activeIdx = -1;
+    list.querySelectorAll(".ac-item").forEach(item => {
+      item.onmousedown = (e) => {
+        e.preventDefault();
+        input.value = item.getAttribute("data-val");
+        close();
+      };
+    });
+  }
+  input.addEventListener("input", () => {
+    open(filterCities(input.value));
+  });
+  input.addEventListener("focus", () => {
+    if (input.value.trim()) open(filterCities(input.value));
+  });
+  input.addEventListener("blur", () => {
+    setTimeout(close, 150);
+  });
+  input.addEventListener("keydown", (e) => {
+    const items = list.querySelectorAll(".ac-item");
+    if (!items.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIdx = Math.min(activeIdx + 1, items.length - 1);
+      items.forEach((it, i) => it.classList.toggle("active", i === activeIdx));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIdx = Math.max(activeIdx - 1, 0);
+      items.forEach((it, i) => it.classList.toggle("active", i === activeIdx));
+    } else if (e.key === "Enter" && activeIdx >= 0) {
+      e.preventDefault();
+      input.value = items[activeIdx].getAttribute("data-val");
+      close();
+    } else if (e.key === "Escape") {
+      close();
+    }
+  });
+}
+
+// ---- init ----
+
+el("settings-btn").onclick = () => el("settings-overlay").classList.add("open");
+el("close-settings").onclick = () => el("settings-overlay").classList.remove("open");
+el("achievements-btn").onclick = () => { renderAchievements(); el("achievements-overlay").classList.add("open"); };
+el("close-achievements").onclick = () => el("achievements-overlay").classList.remove("open");
+el("achievements-overlay").onclick = (e) => { if (e.target.id === "achievements-overlay") el("achievements-overlay").classList.remove("open"); };
+el("settings-overlay").onclick = (e) => { if (e.target.id === "settings-overlay") el("settings-overlay").classList.remove("open"); };
+document.querySelectorAll("[data-lang]").forEach(b => {
+  b.onclick = () => {
+    lang = b.dataset.lang;
+    localStorage.setItem("cis-lang", lang);
+    applyLanguage();
+  };
+});
+
+bindAutocomplete('f-from', 'ac-from');
+bindAutocomplete('f-to', 'ac-to');
+el("f-from").addEventListener("input", () => renderNamedTrainToggle(normalizeCity(el("f-from").value), normalizeCity(el("f-to").value), ""));
+el("f-to").addEventListener("input", () => renderNamedTrainToggle(normalizeCity(el("f-from").value), normalizeCity(el("f-to").value), ""));
+initMap();
+applyLanguage();
+loadTrips();
+setSheet(false);
+if (typeof renderColorToggles === 'function') renderColorToggles();
+</script>
+
+</body>
+</html>
